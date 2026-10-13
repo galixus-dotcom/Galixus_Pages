@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FaceTrack — Employee Time Tracking</title>
+  <style>
+    :root {
+      --artifact-background: #ffffff;
+      --artifact-background-light: #f1f3f6;
+      --artifact-background-mid: #e9ecf1;
+      --artifact-border-light: #e3e6ec;
+      --artifact-border-dark: #cdd2db;
+      --artifact-primary-brand: #3559e6;
+      --artifact-primary-highlight: #0d0f14;
+      --artifact-primary-hover: #2442b8;
+      --artifact-selected: #eaeefc;
+      --artifact-text-primary: #11141a;
+      --artifact-text-secondary: #5c6470;
+      --artifact-text-highlight: #e8eefc;
+      --artifact-positive-background: #e8f6ee;
+      --artifact-positive: #159a6a;
+      --artifact-negative: #dc4c4c;
+    }
+    html[data-theme='dark'] {
+      --artifact-background: #0a0b0e;
+      --artifact-background-light: #121419;
+      --artifact-background-mid: #181b22;
+      --artifact-border-light: #23262e;
+      --artifact-border-dark: #343844;
+      --artifact-primary-brand: #6a92ff;
+      --artifact-primary-highlight: #f5f7fb;
+      --artifact-primary-hover: #88a8ff;
+      --artifact-selected: #1a2030;
+      --artifact-text-primary: #eef0f4;
+      --artifact-text-secondary: #9aa0ad;
+      --artifact-text-highlight: #14213d;
+      --artifact-positive-background: #0e2a1d;
+      --artifact-positive: #46d39a;
+      --artifact-negative: #ff6b6b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 15px; line-height: 1.6; letter-spacing: -0.005em;
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 58px;
+      background: var(--artifact-background);
+      border-bottom: 1px solid var(--artifact-border-light);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--artifact-primary-brand);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 17px; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-tag { font-size: 11px; color: var(--artifact-text-secondary); margin-top: -2px; font-family: monospace; }
+    .nav-tabs {
+      display: flex; gap: 2px;
+      background: var(--artifact-background-light);
+      border-radius: 9px; padding: 3px;
+    }
+    .nav-tab {
+      padding: 6px 15px; border-radius: 6px; border: none;
+      background: transparent; color: var(--artifact-text-secondary);
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .nav-tab:hover { color: var(--artifact-text-primary); }
+    .nav-tab.active {
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .live-clock {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: 14px; color: var(--artifact-text-secondary); letter-spacing: 0.05em;
+      min-width: 80px; text-align: right;
+    }
+    .big-clock {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: clamp(3.2rem, 8vw, 5.5rem);
+      font-weight: 200;
+      letter-spacing: 0.06em;
+      color: var(--artifact-text-primary);
+      text-align: center;
+      line-height: 1;
+      margin: 0 0 18px 0;
+      padding: 18px 0 10px;
+      background: linear-gradient(135deg, var(--artifact-text-primary) 60%, var(--artifact-text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      user-select: none;
+    }
+    .big-clock-date {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--artifact-text-secondary);
+      text-align: center;
+      margin-bottom: 28px;
+      user-select: none;
+    }
+
+    /* LAYOUT */
+    .page { max-width: 980px; margin: 0 auto; padding: 36px 28px; }
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+    .eyebrow {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--artifact-text-secondary); margin-bottom: 6px;
+    }
+    .page-h1 {
+      font-size: 2rem; font-weight: 300; letter-spacing: -0.03em;
+      color: var(--artifact-text-primary); margin-bottom: 28px; line-height: 1.1;
+    }
+
+    /* CLOCK TAB */
+    .clock-grid {
+      display: grid; grid-template-columns: 1fr 360px; gap: 28px; align-items: start;
+    }
+    .cam-wrap {
+      position: relative; background: #0d0f14; border-radius: 12px;
+      overflow: hidden; aspect-ratio: 4/3;
+      border: 1px solid var(--artifact-border-light);
+    }
+    #main-video {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transform: scaleX(-1);
+    }
+    .cam-overlay {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      background: rgba(13,15,20,0.88); color: #e8eaf0;
+      font-size: 13px; text-align: center; padding: 24px;
+    }
+    .cam-overlay.hidden { display: none; }
+    #live-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .live-name-badge {
+      position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(6px);
+      border: 1.5px solid rgba(99,179,237,0.55);
+      border-radius: 24px; padding: 6px 22px;
+      color: #e8f4fd; font-size: 15px; font-weight: 600;
+      letter-spacing: 0.4px; white-space: nowrap;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .live-name-badge.visible { opacity: 1; }
+    .live-name-badge .badge-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4ade80; flex-shrink: 0;
+    }
+    .live-name-badge.unknown .badge-dot { background: #f87171; }
+    .cam-status {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 10px 14px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+      color: #fff; font-size: 12px; display: flex; align-items: center; gap: 7px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+    .dot.loading { background: #fbbf24; animation: blink 1.4s infinite; }
+    .dot.err { background: #f87171; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* CONTROLS */
+    .ctrl-panel { display: flex; flex-direction: column; gap: 16px; }
+    .ctrl-card {
+      background: var(--artifact-background-light);
+      border: 1px solid var(--artifact-border-light);
+      border-radius: 10px; padding: 20px;
+    }
+    .ctrl-label {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--artifact-text-secondary); margin-bottom: 10px;
+    }
+    .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .type-btn {
+      padding: 13px; border-radius: 8px;
+      border: 2px solid var(--artifact-border-light);
+      background: var(--artifact-background);
+      color: var(--artifact-text-secondary);
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.14s; text-align: center;
+    }
+    .type-btn.on-start { border-color: var(--artifact-positive); background: var(--artifact-positive-background); color: var(--artifact-positive); }
+    .type-btn.on-stop  { border-color: var(--artifact-negative); background: #fff0f0; color: var(--artifact-negative); }
+    html[data-theme='dark'] .type-btn.on-stop { background: #2a1010; }
+    .capture-btn {
+      width: 100%; padding: 16px; border-radius: 9px; border: none;
+      background: var(--artifact-primary-brand); color: #fff;
+      font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.15s;
+    }
+    .capture-btn:hover:not(:disabled) { background: var(--artifact-primary-hover); transform: translateY(-1px); }
+    .capture-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--artifact-text-secondary); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+    /* RESULT CARD */
+    .result-card { border-radius: 10px; border: 1px solid var(--artifact-border-light); padding: 18px; display: none; }
+    .result-card.show { display: block; animation: fadeUp .25s ease; }
+    .result-card.ok  { border-color: var(--artifact-positive); background: var(--artifact-positive-background); }
+    .result-card.fail{ border-color: var(--artifact-negative); background: #fff0f0; }
+    html[data-theme='dark'] .result-card.fail { background: #2a1010; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+    .result-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .result-badge.start { background: var(--artifact-positive); color: #fff; }
+    .result-badge.stop  { background: var(--artifact-negative); color: #fff; }
+    .result-name { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
+    .result-time { font-family: monospace; font-size: 13px; color: var(--artifact-text-secondary); margin-bottom: 6px; }
+    .result-msg  { font-size: 13px; color: var(--artifact-text-secondary); }
+
+    /* TABLES */
+    .table-wrap { border: 1px solid var(--artifact-border-light); border-radius: 10px; overflow: hidden; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .data-table th {
+      font-family: "SF Mono","IBM Plex Mono","Consolas",monospace;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--artifact-text-secondary); padding: 12px 16px; text-align: left;
+      border-bottom: 1px solid var(--artifact-border-light);
+      background: var(--artifact-background-light);
+    }
+    .data-table td {
+      padding: 13px 16px; border-bottom: 1px solid var(--artifact-border-light);
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: var(--artifact-background-light); }
+    .emp-cell { display: flex; align-items: center; gap: 11px; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+      border: 1px solid var(--artifact-border-light);
+    }
+    .avatar-ph {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      background: var(--artifact-background-mid); border: 1px solid var(--artifact-border-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--artifact-text-secondary);
+    }
+    .emp-name { font-weight: 500; }
+    .mono { font-family: "SF Mono","IBM Plex Mono","Consolas",monospace; font-size: 13px; }
+    .time-val { font-family: "SF Mono","IBM Plex Mono","Consolas",monospace; font-size: 13px; font-weight: 500; }
+    .time-empty { color: var(--artifact-text-secondary); }
+    .hrs-pill {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      background: var(--artifact-text-highlight); color: var(--artifact-primary-brand);
+      font-size: 12px; font-weight: 600; font-family: monospace;
+    }
+    .empty-state {
+      text-align: center; padding: 52px 24px; color: var(--artifact-text-secondary);
+    }
+    .empty-ico { font-size: 36px; opacity: .35; margin-bottom: 14px; }
+    .empty-title { font-size: 16px; font-weight: 500; color: var(--artifact-text-primary); margin-bottom: 6px; }
+    .empty-desc  { font-size: 13px; }
+
+    /* MONTHLY */
+    .month-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .month-arrow {
+      width: 34px; height: 34px; border-radius: 7px;
+      border: 1px solid var(--artifact-border-light);
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center;
+      font-family: inherit; transition: background .13s;
+    }
+    .month-arrow:hover { background: var(--artifact-background-light); }
+    .month-lbl { font-size: 19px; font-weight: 500; letter-spacing: -0.02em; min-width: 150px; text-align: center; }
+    .mode-toggle { display:flex; gap:6px; margin-bottom:20px; }
+    .mode-btn {
+      padding:7px 20px; border-radius:20px; border:1px solid var(--artifact-border-light);
+      background:var(--artifact-background); color:var(--artifact-text-secondary);
+      cursor:pointer; font-family:inherit; font-size:13px; font-weight:500; transition:all .15s;
+    }
+    .mode-btn.active { background:var(--artifact-accent,#0056b3); color:#fff; border-color:var(--artifact-accent,#0056b3); }
+    .week-grid { width:100%; border-collapse:collapse; margin-bottom:28px; font-size:13px; }
+    .week-grid th { padding:8px 10px; text-align:center; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+      color:var(--artifact-text-secondary); border-bottom:1px solid var(--artifact-border-light); font-weight:500; }
+    .week-grid td { padding:10px 10px; text-align:center; border-bottom:1px solid var(--artifact-border-light); vertical-align:middle; }
+    .week-grid tr:last-child td { border-bottom:none; }
+    .week-grid tr:hover td { background:var(--artifact-background-light); }
+    .week-cell-worked { font-size:12px; font-weight:500; color:var(--artifact-text-primary); }
+    .week-cell-times { font-size:10px; color:var(--artifact-text-secondary); margin-top:2px; line-height:1.3; }
+    .week-cell-off { color:var(--artifact-border-light); font-size:18px; }
+    .week-total-pill { background:var(--artifact-accent,#0056b3); color:#fff; border-radius:10px; padding:3px 9px; font-size:12px; font-weight:600; display:inline-block; }
+    .week-today-col { background:rgba(0,86,179,.05); }
+    .week-name-cell { display:flex; align-items:center; gap:9px; white-space:nowrap; }
+    .week-lbl-big { font-size:15px; font-weight:500; }
+    .week-lbl-sub { font-size:11px; color:var(--artifact-text-secondary); margin-top:1px; }
+    .kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 28px; }
+    .kpi-card {
+      background: var(--artifact-background-light);
+      border: 1px solid var(--artifact-border-light);
+      border-radius: 10px; padding: 18px 20px;
+    }
+    .kpi-lbl { font-family: monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--artifact-text-secondary); margin-bottom: 6px; }
+    .kpi-val { font-size: 1.9rem; font-weight: 300; letter-spacing: -0.03em; line-height: 1; }
+    .acc-item { border: 1px solid var(--artifact-border-light); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+    .acc-head {
+      display: flex; align-items: center; padding: 14px 18px; cursor: pointer; gap: 14px;
+      background: var(--artifact-background-light); transition: background .1s;
+    }
+    .acc-head:hover { background: var(--artifact-background-mid); }
+    .acc-name { flex: 1; font-weight: 500; }
+    .acc-days { font-size: 12px; color: var(--artifact-text-secondary); }
+    .acc-hrs  { font-family: monospace; font-size: 13px; font-weight: 700; color: var(--artifact-primary-brand); }
+    .chevron  { font-size: 11px; color: var(--artifact-text-secondary); transition: transform .2s; }
+    .acc-item.open .chevron { transform: rotate(180deg); }
+    .acc-body { display: none; }
+    .acc-item.open .acc-body { display: block; }
+    .edited-tag {
+      font-size: 10px; background: var(--artifact-selected); color: var(--artifact-primary-brand);
+      border-radius: 3px; padding: 1px 5px; font-family: monospace; margin-left: 4px;
+    }
+
+    /* ADMIN */
+    .login-wrap { max-width: 340px; margin: 60px auto; text-align: center; }
+    .login-ico { font-size: 40px; margin-bottom: 18px; }
+    .input-f {
+      width: 100%; padding: 11px 14px; border-radius: 7px;
+      border: 1px solid var(--artifact-border-dark);
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s;
+      margin-bottom: 10px;
+    }
+    .input-f:focus { border-color: var(--artifact-primary-brand); }
+    .btn-pri {
+      padding: 11px 22px; border-radius: 7px; border: none;
+      background: var(--artifact-primary-brand); color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: background .15s;
+    }
+    .btn-pri:hover { background: var(--artifact-primary-hover); }
+    .btn-sec {
+      padding: 8px 15px; border-radius: 6px;
+      border: 1px solid var(--artifact-border-dark);
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .13s;
+    }
+    .btn-sec:hover { background: var(--artifact-background-light); }
+    .btn-del {
+      padding: 7px 13px; border-radius: 6px;
+      border: 1px solid var(--artifact-negative);
+      background: transparent; color: var(--artifact-negative);
+      font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .13s;
+    }
+    .btn-del:hover { background: #fff0f0; }
+    html[data-theme='dark'] .btn-del:hover { background: #2a1010; }
+    .sec-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sec-title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+    .admin-logout {
+      background: none; border: none; font-family: inherit;
+      font-size: 13px; color: var(--artifact-text-secondary);
+      cursor: pointer; text-decoration: underline; padding: 0;
+    }
+    .admin-logout:hover { color: var(--artifact-negative); }
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+    .filter-sel {
+      padding: 7px 11px; border-radius: 6px;
+      border: 1px solid var(--artifact-border-dark);
+      background: var(--artifact-background); color: var(--artifact-text-primary);
+      font-size: 13px; font-family: inherit; cursor: pointer; outline: none;
+    }
+
+    /* MODALS */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 900; backdrop-filter: blur(3px);
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--artifact-background);
+      border: 1px solid var(--artifact-border-light);
+      border-radius: 14px; padding: 28px;
+      max-width: 460px; width: 92%; position: relative;
+      animation: mIn .2s ease;
+    }
+    @keyframes mIn { from{opacity:0;transform:scale(.96) translateY(6px)} to{opacity:1;transform:none} }
+    .modal-x {
+      position: absolute; top: 14px; right: 14px; width: 26px; height: 26px;
+      border-radius: 5px; border: none; background: var(--artifact-background-mid);
+      color: var(--artifact-text-secondary); cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center; font-family: inherit;
+    }
+    .modal-x:hover { background: var(--artifact-border-dark); }
+    .modal-title { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--artifact-text-secondary); margin-bottom: 20px; }
+    .modal-cam-wrap {
+      width: 100%; aspect-ratio: 4/3; background: #0d0f14;
+      border-radius: 9px; overflow: hidden; margin-bottom: 14px;
+    }
+    .modal-cam-wrap video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+    .reg-status { font-size: 13px; color: var(--artifact-text-secondary); min-height: 20px; margin-bottom: 6px; }
+    /* Source selector tabs in register modal */
+    .src-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .src-tab {
+      padding: 7px 14px; border-radius: 7px;
+      border: 1px solid var(--artifact-border-dark);
+      background: var(--artifact-background); color: var(--artifact-text-secondary);
+      font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .13s;
+    }
+    .src-tab.active { border-color: var(--artifact-primary-brand); background: var(--artifact-selected); color: var(--artifact-primary-brand); }
+    .upload-drop {
+      width: 100%; aspect-ratio: 4/3;
+      background: var(--artifact-background-light);
+      border: 2px dashed var(--artifact-border-dark);
+      border-radius: 9px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px; transition: border-color .15s; overflow: hidden; position: relative;
+    }
+    .upload-drop:not(.has-img):hover { border-color: var(--artifact-primary-brand); }
+    .upload-drop.has-img { cursor: grab; border-style: solid; border-color: var(--artifact-border-dark); }
+    .upload-drop.drag-active { cursor: grabbing !important; }
+    .upload-drop-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+    .scan-list { max-height: 220px; overflow-y: auto; }
+    .scan-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid var(--artifact-border-light);
+      font-size: 13px;
+    }
+    .scan-item:last-child { border-bottom: none; }
+    .scan-type { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+    .scan-type.start { background: var(--artifact-positive); color: #fff; }
+    .scan-type.stop  { background: var(--artifact-negative); color: #fff; }
+    .scan-eff { font-size: 10px; color: var(--artifact-primary-brand); font-family: monospace; margin-left: 5px; }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 22px; right: 22px;
+      background: var(--artifact-primary-highlight); color: var(--artifact-background);
+      padding: 11px 18px; border-radius: 9px; font-size: 13px; font-weight: 500;
+      opacity: 0; transform: translateY(8px); transition: all .25s ease;
+      z-index: 9999; max-width: 300px; pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,.14);
+    }
+    #toast.show { opacity: 1; transform: none; }
+
+    /* SPINNER */
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,.2);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-bar {
+      width: 180px; height: 4px; background: rgba(255,255,255,.15);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--artifact-primary-brand);
+      transition: width .4s ease;
+    }
+
+    /* DEMO BANNER */
+    .demo-banner {
+      background: var(--artifact-selected); border: 1px solid var(--artifact-primary-brand);
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 13px;
+      color: var(--artifact-primary-brand); display: none; align-items: center; gap: 10px;
+    }
+    .demo-banner.show { display: flex; }
+
+    @media (max-width: 680px) {
+      .clock-grid { grid-template-columns: 1fr; }
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+      .app-header { padding: 0 14px; }
+      .page { padding: 24px 14px; }
+    }
+    @media print {
+      body { padding: .4in .6in; background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .app-header { position: static !important; }
+      .nav-tabs, .capture-btn, .btn-pri, .btn-sec, .btn-del, button { display: none !important; }
+      .tab-section { display: block !important; }
+    }
+  
+    /* OT / LATE / EARLY */
+    .ot-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:#ff8c00;color:#fff;margin-left:4px;vertical-align:middle;}
+    .late-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:var(--artifact-negative);color:#fff;margin-left:4px;vertical-align:middle;}
+    .early-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:#e6a800;color:#fff;margin-left:4px;vertical-align:middle;}
+    .early-start-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:#2563eb;color:#fff;margin-left:4px;vertical-align:middle;}
+    .ot-cell{color:#cc6600;font-weight:700;}
+    .week-cell-ot{background:#fff3e0 !important;}
+    .week-mini-badge{display:inline-block;padding:0 4px;border-radius:3px;font-size:9px;font-weight:700;color:#fff;margin:1px 1px 0 0;}
+    .wmb-late{background:#dc2626;}
+    .wmb-early{background:#d97706;}
+    .wmb-early-start{background:#2563eb;}
+    .wmb-ot{background:#ff8c00;}
+    .wt-late{color:#dc2626;font-weight:700;}
+    .wt-early-start{color:#2563eb;font-weight:700;}
+    .wt-early-end{color:#d97706;font-weight:700;}
+    .ot-bar{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--artifact-text-secondary);margin-bottom:18px;}
+    .ot-bar input[type=number]{width:52px;padding:5px 8px;border-radius:7px;text-align:center;border:1.5px solid var(--artifact-border-light);background:var(--artifact-background);color:var(--artifact-text-primary);font-size:13px;outline:none;}
+    .ot-bar input[type=number]:focus{border-color:var(--artifact-primary-brand);}
+    /* SCHED MODAL */
+    #sched-modal{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+    #sched-modal.show{display:flex;}
+    #sched-box{background:var(--artifact-surface);border-radius:14px;padding:24px;width:300px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:fadeUp .2s ease;}
+    .sched-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;}
+    .sched-row label{width:105px;color:var(--artifact-text-secondary);flex-shrink:0;}
+    .sched-row input[type=time]{flex:1;padding:7px 9px;border-radius:8px;font-size:13px;outline:none;border:1.5px solid var(--artifact-border-light);background:var(--artifact-background);color:var(--artifact-text-primary);}
+    .sched-row input[type=time]:focus{border-color:var(--artifact-primary-brand);}
+    /* QR MODAL */
+    #qr-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+    #qr-modal.show{display:flex;animation:fadeUp .2s ease;}
+    #qr-box{background:var(--artifact-surface);border-radius:16px;padding:26px;width:330px;max-width:92vw;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+    .qr-t{font-size:16px;font-weight:700;margin-bottom:3px;}
+    .qr-s{font-size:12px;color:var(--artifact-text-secondary);margin-bottom:14px;}
+    .qr-img{width:68px;height:68px;border-radius:10px;object-fit:cover;border:2px solid var(--artifact-primary-brand);display:block;margin:0 auto 14px;}
+    #qr-name{width:100%;padding:9px 13px;border-radius:9px;box-sizing:border-box;border:1.5px solid var(--artifact-border-light);background:var(--artifact-background);color:var(--artifact-text-primary);font-size:14px;outline:none;margin-bottom:11px;}
+    #qr-name:focus{border-color:var(--artifact-primary-brand);}
+    .qr-acts{display:flex;gap:9px;}
+    .qr-acts .qr-primary{flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;background:var(--artifact-primary-brand);color:#fff;font-size:13px;font-weight:600;}
+    .qr-acts .qr-secondary{padding:9px 13px;border-radius:9px;border:1px solid var(--artifact-border-light);background:transparent;color:var(--artifact-text-secondary);font-size:13px;cursor:pointer;}
+    .qr-status{font-size:12px;margin-top:9px;min-height:15px;text-align:center;}
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<header class="app-header" data-glean-id="app-header">
+  <div class="logo">
+    <div class="logo-icon">&#128065;</div>
+    <div>
+      <div class="logo-name">FaceTrack</div>
+      <div class="logo-tag">EMPLOYEE TIME TRACKING</div>
+    </div>
+  </div>
+  <nav class="nav-tabs" data-glean-id="main-nav">
+    <button class="nav-tab active" type="button" onclick="gotoTab('clock')">Clock In/Out</button>
+    <button class="nav-tab" type="button" onclick="gotoTab('today')">Today</button>
+    <button class="nav-tab" type="button" onclick="gotoTab('monthly')">Monthly Report</button>
+    <button class="nav-tab" type="button" onclick="gotoTab('admin')">Admin</button>
+  </nav>
+  <div class="live-clock" id="live-clock">--:--:--</div>
+</header>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<main>
+
+<!-- ─── CLOCK IN/OUT ─── -->
+<section class="tab-section active page" id="tab-clock" data-glean-id="tab-clock">
+  <div class="eyebrow">Employee Time Tracking</div>
+  <div class="page-h1">Clock In / Out</div>
+  <div class="big-clock" id="big-clock">--:--:--</div>
+  <div class="big-clock-date" id="big-clock-date"></div>
+  <div class="clock-grid">
+    <!-- Webcam -->
+    <div class="cam-wrap" data-glean-id="cam-wrap">
+      <video id="main-video" autoplay muted playsinline></video>
+      <canvas id="live-canvas"></canvas>
+      <div class="live-name-badge" id="live-name-badge">
+        <div class="badge-dot"></div>
+        <span id="live-name-txt">Unknown</span>
+      </div>
+      <div class="cam-overlay" id="cam-overlay">
+        <div class="spinner"></div>
+        <div class="progress-bar"><div class="progress-fill" id="load-progress" style="width:0%"></div></div>
+        <div id="overlay-msg" style="font-size:13px;color:#aab">Loading face recognition models…</div>
+      </div>
+      <div class="cam-status" id="cam-status" style="display:none">
+        <div class="dot loading" id="status-dot"></div>
+        <span id="status-txt">Starting camera…</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="ctrl-panel" data-glean-id="ctrl-panel">
+      <div class="ctrl-card">
+        <div class="ctrl-label">Event Type</div>
+        <div class="type-toggle">
+          <button class="type-btn on-start" type="button" id="btn-start" onclick="setType('start')">▶ &nbsp;Start</button>
+          <button class="type-btn"          type="button" id="btn-stop"  onclick="setType('stop')">■ &nbsp;Stop</button>
+        </div>
+      </div>
+      <div class="ctrl-card">
+        <div class="ctrl-label">Action</div>
+        <button class="capture-btn" type="button" id="cap-btn" onclick="doCapture()" disabled>
+          <span>📸</span> Capture &amp; Record
+        </button>
+        <div class="hint">
+          Position your face in frame and press Capture.<br>
+          First Start of day &amp; Last Stop of day are the official records.
+        </div>
+      </div>
+      <div class="result-card" id="result-card" data-glean-id="result-card">
+        <div class="result-badge" id="r-badge">START</div>
+        <div class="result-name" id="r-name">—</div>
+        <div class="result-time" id="r-time">—</div>
+        <div class="result-msg"  id="r-msg"></div>
+        <button id="btn-reg-now" type="button" onclick="quickRegister()" style="display:none;margin-top:10px;padding:8px 14px;border-radius:8px;border:none;cursor:pointer;background:var(--artifact-primary-brand);color:#fff;font-size:13px;font-weight:600;">&#128100; Register This Person</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TODAY ─── -->
+<section class="tab-section page" id="tab-today" data-glean-id="tab-today">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+    <div>
+      <div class="eyebrow">Daily Log</div>
+      <div class="page-h1" id="today-h1" style="margin-bottom:0">Today's Records</div>
+    </div>
+    <button class="btn-sec" type="button" onclick="exportTodayExcel()" style="display:flex;align-items:center;gap:6px;font-size:13px;flex-shrink:0">
+      📊 Export Excel
+    </button>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Start (first)</th><th>Stop (last)</th><th>Hours</th></tr></thead>
+      <tbody id="today-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─── MONTHLY ─── -->
+<section class="tab-section page" id="tab-monthly" data-glean-id="tab-monthly">
+  <div class="eyebrow" id="report-eyebrow">Monthly Summary</div>
+  <div class="page-h1">Hours Report</div>
+  <div class="ot-bar"><span>Overtime threshold:</span><input type="number" id="ot-threshold" value="8" min="1" max="24" step="0.5" onchange="Store.set('otThreshold',+this.value);renderReport()"/><span>hours / day</span></div>
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button id="btn-mode-monthly" class="mode-btn active" type="button" onclick="setReportMode('monthly')">📅 Monthly</button>
+    <button id="btn-mode-weekly"  class="mode-btn"        type="button" onclick="setReportMode('weekly')">📆 Weekly</button>
+  </div>
+  <!-- Month nav -->
+  <div class="month-nav" id="nav-monthly" style="justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="month-arrow" type="button" onclick="shiftMonth(-1)">&#8249;</button>
+      <span class="month-lbl" id="month-lbl">—</span>
+      <button class="month-arrow" type="button" onclick="shiftMonth(1)">&#8250;</button>
+    </div>
+    <button class="btn-sec" type="button" onclick="exportPDF()" style="display:flex;align-items:center;gap:5px;font-size:13px">&#128424; Export PDF</button>
+        <button class="btn-sec" type="button" onclick="exportMonthlyExcel()" style="display:flex;align-items:center;gap:6px;font-size:13px">
+      📊 Export Excel
+    </button>
+  </div>
+  <!-- Week nav -->
+  <div class="month-nav" id="nav-weekly" style="justify-content:space-between;display:none">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="month-arrow" type="button" onclick="shiftWeek(-1)">&#8249;</button>
+      <span class="month-lbl" id="week-lbl" style="min-width:220px">—</span>
+      <button class="month-arrow" type="button" onclick="shiftWeek(1)">&#8250;</button>
+    </div>
+    <button class="btn-sec" type="button" onclick="exportPDF()" style="display:flex;align-items:center;gap:5px;font-size:13px">&#128424; Export PDF</button>
+    <button class="btn-sec" type="button" onclick="exportWeeklyExcel()" style="display:flex;align-items:center;gap:6px;font-size:13px">
+      📊 Export Excel
+    </button>
+  </div>
+  <!-- KPIs (shared) -->
+  <div class="kpi-row" data-glean-id="kpi-row">
+    <div class="kpi-card"><div class="kpi-lbl">Total Hours</div><div class="kpi-val" id="kpi-total">—</div></div>
+    <div class="kpi-card"><div class="kpi-lbl">Avg / Employee</div><div class="kpi-val" id="kpi-avg">—</div></div>
+    <div class="kpi-card"><div class="kpi-lbl" id="kpi-active-lbl">Active Employees</div><div class="kpi-val" id="kpi-active">—</div></div>
+  </div>
+  <div id="monthly-list" data-glean-id="monthly-list"></div>
+</section>
+
+<!-- ─── ADMIN ─── -->
+<section class="tab-section page" id="tab-admin" data-glean-id="tab-admin">
+  <!-- Login gate -->
+  <div id="gate" data-glean-id="admin-gate">
+    <div class="login-wrap">
+      <div class="login-ico">🔒</div>
+      <div class="page-h1" style="font-size:1.6rem;margin-bottom:8px">Admin Access</div>
+      <p style="font-size:13px;color:var(--artifact-text-secondary);margin-bottom:22px">
+        Enter your admin password to manage employees and edit records.
+      </p>
+      <input class="input-f" type="password" id="pass-input" placeholder="Password" />
+      <button class="btn-pri" type="button" onclick="doLogin()" style="width:100%">Sign In</button>
+
+    </div>
+  </div>
+
+  <!-- Admin panel -->
+  <div id="admin-panel" style="display:none" data-glean-id="admin-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
+      <div><div class="eyebrow">Admin Panel</div><div class="page-h1" style="margin-bottom:0">Manage Records</div></div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="btn-sec" type="button" onclick="openChangePass()" style="font-size:12px">🔑 Change Password</button>
+        <button class="btn-sec" type="button" onclick="loadDemo()" style="font-size:12px">Load Demo Data</button>
+        <button class="admin-logout" type="button" onclick="doLogout()">Sign Out</button>
+      </div>
+    </div>
+    <!-- Change Password Modal -->
+    <div id="chpass-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;align-items:center;justify-content:center">
+      <div style="background:var(--artifact-background);border-radius:16px;padding:32px;width:360px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:20px">🔑 Change Password</div>
+        <div style="margin-bottom:12px">
+          <div class="ctrl-label" style="margin-bottom:5px">Current Password</div>
+          <input class="input-f" type="password" id="cp-current" placeholder="Enter current password" />
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="ctrl-label" style="margin-bottom:5px">New Password</div>
+          <input class="input-f" type="password" id="cp-new" placeholder="Enter new password" />
+        </div>
+        <div style="margin-bottom:20px">
+          <div class="ctrl-label" style="margin-bottom:5px">Confirm New Password</div>
+          <input class="input-f" type="password" id="cp-confirm" placeholder="Confirm new password" />
+        </div>
+        <div id="cp-error" style="color:var(--artifact-negative);font-size:13px;margin-bottom:12px;display:none"></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn-pri" type="button" onclick="saveNewPass()" style="flex:1">Save Password</button>
+          <button class="btn-sec" type="button" onclick="closeChangePass()" style="flex:1">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Employees -->
+    <div class="sec-hdr" data-glean-id="emp-sec-hdr">
+      <div class="sec-title">Employees</div>
+      <button class="btn-pri" type="button" onclick="openRegModal()">+ Add Employee</button>
+    </div>
+    <div class="table-wrap" style="margin-bottom:32px" data-glean-id="emp-table">
+      <table class="data-table">
+        <thead><tr><th>Employee</th><th>ID</th><th>Registered</th><th>Action</th></tr></thead>
+        <tbody id="emp-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Records -->
+    <div class="sec-hdr" data-glean-id="rec-sec-hdr">
+      <div class="sec-title">Time Records</div>
+    </div>
+    <div class="filter-row">
+      <select class="filter-sel" id="f-emp" onchange="renderAdminRec()"><option value="">All Employees</option></select>
+      <input class="filter-sel" type="date" id="f-date" onchange="renderAdminRec()" style="cursor:pointer" />
+      <button class="btn-sec" type="button" onclick="clearFilters()" style="font-size:12px">Clear</button>
+    </div>
+    <div class="table-wrap" data-glean-id="rec-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee</th><th>Date</th>
+            <th>Start (effective)</th><th>Stop (effective)</th>
+            <th>Hours</th><th>Scans</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="rec-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main><!-- /main -->
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
+
+<!-- Register employee -->
+<div class="modal-bg" id="reg-modal" data-glean-id="reg-modal">
+  <div class="modal">
+    <button class="modal-x" type="button" onclick="closeRegModal()">✕</button>
+    <div class="modal-title">Register New Employee</div>
+    <div class="modal-sub">Choose a source, enter the employee's name, then capture.</div>
+    <!-- Source toggle -->
+    <div class="src-tabs">
+      <button class="src-tab active" type="button" id="src-cam-btn" onclick="switchRegSrc('cam')">📷 Webcam</button>
+      <button class="src-tab"        type="button" id="src-img-btn" onclick="switchRegSrc('img')">🖼 Upload Image</button>
+    </div>
+    <!-- Webcam source -->
+    <div id="reg-src-cam">
+      <div class="modal-cam-wrap"><video id="reg-video" autoplay muted playsinline></video></div>
+    </div>
+    <!-- Image upload source -->
+    <div id="reg-src-img" style="display:none">
+      <!-- Drop zone / movable image canvas -->
+      <div class="upload-drop" id="upload-drop">
+        <!-- Empty state prompt -->
+        <div class="upload-drop-inner" id="upload-drop-inner">
+          <div style="font-size:34px;opacity:.4">🖼</div>
+          <div style="font-size:14px;font-weight:500;margin-top:4px">Click to upload a photo</div>
+          <div style="font-size:12px;color:var(--artifact-text-secondary);margin-top:2px">JPG &middot; PNG &middot; WEBP</div>
+        </div>
+        <!-- Canvas for pan/zoom image rendering -->
+        <canvas id="upload-canvas"
+          style="display:none;position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+        <!-- Face guide overlay shown after image load -->
+        <div id="face-guide" style="display:none;position:absolute;inset:0;pointer-events:none">
+          <svg width="100%" height="100%">
+            <defs>
+              <mask id="oval-mask">
+                <rect width="100%" height="100%" fill="white"/>
+                <ellipse cx="50%" cy="47%" rx="27%" ry="37%" fill="black"/>
+              </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="rgba(0,0,0,0.28)" mask="url(#oval-mask)"/>
+            <ellipse cx="50%" cy="47%" rx="27%" ry="37%" fill="none"
+              stroke="#3559e6" stroke-width="2" stroke-dasharray="7 4"/>
+          </svg>
+          <div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;
+            font-size:11px;color:rgba(255,255,255,.9);font-weight:500;letter-spacing:.03em">
+            Drag to center &nbsp;&middot;&nbsp; Scroll / slider to zoom
+          </div>
+        </div>
+      </div>
+      <!-- Zoom + change photo row (appears after upload) -->
+      <div id="img-controls" style="display:none;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--artifact-text-secondary);flex-shrink:0">Zoom</span>
+          <input type="range" id="img-zoom-slider" min="10" max="500" value="100"
+            style="flex:1;accent-color:var(--artifact-primary-brand);cursor:pointer"
+            oninput="setImgZoom(this.value)" />
+          <span style="font-size:11px;font-family:monospace;color:var(--artifact-text-secondary);min-width:42px;text-align:right" id="zoom-pct">100%</span>
+          <button class="btn-sec" type="button"
+            onclick="document.getElementById('img-file-input').click()"
+            style="font-size:11px;padding:4px 10px;flex-shrink:0">Change</button>
+        </div>
+      </div>
+      <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgUpload(event)" />
+    </div>
+    <input class="input-f" type="text" id="reg-name" placeholder="Full Name" />
+    <div class="reg-status" id="reg-status"></div>
+    <div class="modal-actions">
+      <button class="btn-sec" type="button" onclick="closeRegModal()">Cancel</button>
+      <button class="btn-pri" type="button" id="reg-cap-btn" onclick="doRegCapture()">📸 Capture Face</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit record -->
+<div class="modal-bg" id="edit-modal" data-glean-id="edit-modal">
+  <div class="modal">
+    <button class="modal-x" type="button" onclick="closeEditModal()">✕</button>
+    <div class="modal-title">Edit Time Record</div>
+    <div class="modal-sub" id="edit-sub">—</div>
+    <div style="display:grid;gap:14px;margin-bottom:4px">
+      <div>
+        <div class="ctrl-label" style="margin-bottom:5px">Start Time</div>
+        <input class="input-f" type="datetime-local" id="edit-start" style="margin-bottom:0" />
+      </div>
+      <div>
+        <div class="ctrl-label" style="margin-bottom:5px">Stop Time</div>
+        <input class="input-f" type="datetime-local" id="edit-stop" style="margin-bottom:0" />
+      </div>
+    </div>
+    <div class="modal-sub" id="edit-scan-hdr" style="margin-top:16px;margin-bottom:6px">All scan events this day:</div>
+    <div class="scan-list" id="edit-scan-list"></div>
+    <div class="modal-actions">
+      <button class="btn-del" type="button" onclick="deleteRecord()">Delete All Events</button>
+      <button class="btn-sec" type="button" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-pri" type="button" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+<canvas id="off-canvas" style="display:none"></canvas>
+
+<!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
+<!-- xlsx: pure JS inline writer (no CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════════
+//  FaceTrack — Core Application
+// ══════════════════════════════════════════════════════════
+
+const MODEL_URL   = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+const THRESHOLD   = 0.48;
+
+// ── State ──────────────────────────────────────────────────
+let modelsOk    = false;
+let mainStream  = null;
+let regStream   = null;
+let eventType   = 'start';
+let viewMonth   = new Date();
+let viewMode    = 'monthly';
+function getWeekStart(d){
+  const c=new Date(d); c.setHours(0,0,0,0);
+  const day=c.getDay(), diff=(day===0?-6:1-day);
+  c.setDate(c.getDate()+diff); return c;
+}
+let viewWeek    = getWeekStart(new Date());
+let editCtx     = null;   // { empId, dateStr }
+let adminOk     = false;
+
+// ── Storage ────────────────────────────────────────────────
+const Store = {
+  emps   : () => JSON.parse(localStorage.getItem('ft_emps')   || '[]'),
+  events : () => JSON.parse(localStorage.getItem('ft_evts')   || '[]'),
+  pass   : () => localStorage.getItem('ft_pass') || 'admin123',
+  saveEmps  : v => localStorage.setItem('ft_emps',  JSON.stringify(v)),
+  saveEvts  : v => localStorage.setItem('ft_evts',  JSON.stringify(v)),
+  get       : (k,d) => { const v=localStorage.getItem('ft_'+k); return v===null?d:JSON.parse(v); },
+  set       : (k,v) => localStorage.setItem('ft_'+k, JSON.stringify(v)),
+};
+
+// ── Helpers ────────────────────────────────────────────────
+const uid   = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const today = () => new Date().toISOString().slice(0,10);
+
+function fmtT(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function fmtD(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'});
+}
+function fmtH(ms) {
+  if (ms == null || ms < 0) return '—';
+  const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+  return h+'h '+String(m).padStart(2,'0')+'m';
+}
+function inits(name) { return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+
+function toast(msg, ms=3200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), ms);
+}
+
+// ── Day Record Logic ───────────────────────────────────────
+// Returns effectiveStart (first 'start'), effectiveStop (last 'stop'), duration, allEvents
+function dayRec(empId, dateStr) {
+  const all = Store.events().filter(e => e.empId===empId && e.ts.slice(0,10)===dateStr);
+  const starts = all.filter(e=>e.type==='start').sort((a,b)=>a.ts.localeCompare(b.ts));
+  const stops  = all.filter(e=>e.type==='stop' ).sort((a,b)=>a.ts.localeCompare(b.ts));
+  const s = starts[0]?.ts || null;
+  const e = stops[stops.length-1]?.ts || null;
+  const dur = s && e ? Math.max(0, new Date(e)-new Date(s)) : null;
+  return { s, e, dur, starts, stops, all };
+}
+
+// ── Live Clock ─────────────────────────────────────────────
+setInterval(()=>{
+  const _now = new Date();
+  document.getElementById('big-clock').textContent =
+    _now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false});
+  document.getElementById('big-clock-date').textContent =
+    _now.toLocaleDateString([], {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.getElementById('live-clock').textContent =
+    new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}, 1000);
+
+// ── Tab Navigation ─────────────────────────────────────────
+function gotoTab(id) {
+  document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(b=>{
+    if (b.getAttribute('onclick')?.includes("'"+id+"'")) b.classList.add('active');
+  });
+  if (id==='today')   renderToday();
+  if (id==='monthly'){ if(viewMode==='weekly') renderWeekly(); else renderMonthly(); }
+  if (id==='admin' && adminOk) renderAdmin();
+}
+
+// ── Face API ───────────────────────────────────────────────
+async function loadModels() {
+  const prog = document.getElementById('load-progress');
+  const msg  = document.getElementById('overlay-msg');
+  try {
+    msg.textContent = 'Loading detector model (1/3)…'; prog.style.width = '10%';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    prog.style.width = '40%';
+    msg.textContent = 'Loading landmark model (2/3)…';
+    await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+    prog.style.width = '70%';
+    msg.textContent = 'Loading recognition model (3/3)…';
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    prog.style.width = '100%';
+    modelsOk = true;
+    msg.textContent = 'Requesting camera…';
+    await startCam();
+  } catch(err) {
+    console.error(err);
+    document.getElementById('overlay-msg').textContent =
+      '⚠ Could not load face recognition models. Check internet connection and reload.';
+    document.querySelector('#cam-overlay .spinner').style.display='none';
+  }
+}
+
+async function startCam() {
+  try {
+    mainStream = await navigator.mediaDevices.getUserMedia({
+      video: { width:{ideal:640}, height:{ideal:480}, facingMode:'user' }
+    });
+    const v = document.getElementById('main-video');
+    v.srcObject = mainStream;
+    await new Promise(r => v.onloadedmetadata = r);
+    document.getElementById('cam-overlay').classList.add('hidden');
+    const s = document.getElementById('cam-status');
+    s.style.display = 'flex';
+    document.getElementById('status-dot').className = 'dot';
+    document.getElementById('status-txt').textContent = 'Camera ready — position face and capture';
+    document.getElementById('cap-btn').disabled = false;
+    startLiveRecognition();
+  } catch(e) {
+    document.getElementById('overlay-msg').textContent =
+      '⚠ Camera access denied. Allow camera permission and reload.';
+    document.querySelector('#cam-overlay .spinner').style.display='none';
+  }
+}
+
+// ── Live Face Recognition Loop ───────────────────────────
+let liveLoopRunning = false;
+async function startLiveRecognition() {
+  if (liveLoopRunning) return;
+  liveLoopRunning = true;
+  const video  = document.getElementById('main-video');
+  const cv     = document.getElementById('live-canvas');
+  const badge  = document.getElementById('live-name-badge');
+  const badgeTxt = document.getElementById('live-name-txt');
+  const opts   = new faceapi.TinyFaceDetectorOptions({inputSize:224, scoreThreshold:.3});
+
+  let lastRecog = 0;
+  const RECOG_INTERVAL = 800; // ms between recognition attempts
+
+  function drawLoop() {
+    if (!liveLoopRunning) return;
+    requestAnimationFrame(drawLoop);
+
+    if (video.readyState < 2) return;
+    cv.width  = video.videoWidth;
+    cv.height = video.videoHeight;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+
+    // Draw face boxes stored from last recognition
+    if (cv._detections) {
+      for (const det of cv._detections) {
+        const b = det.box;
+        // Flip x to match the CSS-mirrored video (canvas is NOT mirrored, video is)
+        const fx = cv.width - b.x - b.width;
+        ctx.strokeStyle = det.matched ? '#4ade80' : '#f87171';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = det.matched ? '#4ade80' : '#f87171';
+        ctx.shadowBlur = 8;
+        ctx.strokeRect(fx, b.y, b.width, b.height);
+        ctx.shadowBlur = 0;
+
+        // Name label above box
+        const label = det.name;
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        const tw = ctx.measureText(label).width;
+        const lx = fx, ly = b.y - 6;
+        ctx.fillStyle = det.matched ? 'rgba(20,30,20,0.82)' : 'rgba(30,15,15,0.82)';
+        ctx.fillRect(lx - 2, ly - 16, tw + 10, 20);
+        ctx.fillStyle = det.matched ? '#a3f0b0' : '#fca5a5';
+        ctx.fillText(label, lx + 3, ly - 1);
+      }
+    }
+  }
+  requestAnimationFrame(drawLoop);
+
+  // Separate async loop for face detection (throttled)
+  async function recogLoop() {
+    while (liveLoopRunning) {
+      const now = Date.now();
+      if (now - lastRecog >= RECOG_INTERVAL && video.readyState >= 2) {
+        lastRecog = now;
+        try {
+          const detections = await faceapi.detectAllFaces(video, opts)
+            .withFaceLandmarks(true).withFaceDescriptors();
+
+          if (detections.length === 0) {
+            cv._detections = [];
+            badge.classList.remove('visible', 'unknown');
+          } else {
+            cv._detections = detections.map(d => {
+              const match = matchEmp(d.descriptor);
+              return {
+                box: d.detection.box,
+                matched: !!match,
+                name: match ? match.emp.name : 'Unknown',
+                descriptor: d.descriptor
+              };
+            });
+            const first = cv._detections[0];
+            badgeTxt.textContent = first.name;
+            badge.classList.toggle('unknown', !first.matched);
+            badge.classList.add('visible');
+            if(!first.matched) lastUnknownDescriptor=first.descriptor;
+          }
+        } catch(e) { /* ignore mid-frame errors */ }
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+  recogLoop();
+}
+
+async function getDescriptor(src) {
+  const opts = new faceapi.TinyFaceDetectorOptions({inputSize:320, scoreThreshold:.28});
+  const r = await faceapi.detectSingleFace(src, opts)
+    .withFaceLandmarks(true).withFaceDescriptor();
+  return r ? r.descriptor : null;
+}
+
+function matchEmp(desc) {
+  let best=null, bestD=Infinity;
+  for (const emp of Store.emps()) {
+    if (!emp.desc) continue;
+    const d = faceapi.euclideanDistance(desc, new Float32Array(emp.desc));
+    if (d < bestD) { bestD=d; best=emp; }
+  }
+  return bestD <= THRESHOLD ? { emp:best, dist:bestD } : null;
+}
+
+
+
+function capture(videoEl) {
+  const c = document.getElementById('off-canvas');
+  c.width = videoEl.videoWidth; c.height = videoEl.videoHeight;
+  c.getContext('2d').drawImage(videoEl,0,0);
+  return c;
+}
+
+// ── Capture & Identify ─────────────────────────────────────
+async function doCapture() {
+  const btn = document.getElementById('cap-btn');
+  btn.disabled=true; btn.innerHTML='<span>🔍</span> Identifying…';
+  try {
+    const canvas = capture(document.getElementById('main-video'));
+    const desc   = await getDescriptor(canvas);
+    if (!desc) {
+      showResult('fail','No face detected','','Center your face in the frame and try again.');
+      return;
+    }
+    const match = matchEmp(desc);
+    if (!match) {
+      lastUnknownDescriptor=desc;
+    showResult('fail','Unknown face','','Face not found. Click "Register This Person" below.','',true);
+      return;
+    }
+    lastUnknownDescriptor=null;
+    const { emp } = match;
+    const now = new Date().toISOString();
+    const evts = Store.events();
+    // If this is the first scan of the day for this employee, always record as start
+    const existingToday = evts.filter(e => e.empId===emp.id && e.ts.startsWith(today()));
+    const hasStart = existingToday.some(e => e.type==='start');
+    // Auto-switch logic:
+    // - First scan of day → always Start (even if Stop selected)
+    // - Already has a Start → always Stop (even if Start selected)
+    let effectiveType;
+    let autoSwitched = false;
+    if (existingToday.length === 0) {
+      effectiveType = 'start';
+      if (eventType === 'stop') autoSwitched = true;
+    } else if (hasStart && eventType === 'start') {
+      effectiveType = 'stop';
+      autoSwitched = true;
+    } else {
+      effectiveType = eventType;
+    }
+    evts.push({ id:uid(), empId:emp.id, type:effectiveType, ts:now });
+    Store.saveEvts(evts);
+    // Also update the UI toggle to reflect the auto-switch
+    if (autoSwitched) setType(effectiveType);
+
+    const rec = dayRec(emp.id, today());
+    let msg;
+    if (effectiveType==='start') {
+      if (autoSwitched) {
+        msg = 'No clock-in found — recorded as clock-in instead.';
+      } else {
+        msg = rec.starts.length>1
+          ? 'Already clocked in — first entry '+fmtT(rec.s)+' is the official record.'
+          : 'First clock-in of the day recorded.';
+      }
+    } else {
+      if (autoSwitched) {
+        msg = 'Already clocked in — automatically recorded as clock-out.';
+      } else {
+        msg = rec.stops.length>1
+          ? 'Multiple stops — latest entry '+fmtT(now)+' is now the official stop.'
+          : 'Clock-out recorded.';
+      }
+    }
+    showResult('ok', emp.name, fmtT(now), msg, effectiveType);
+  } catch(e) {
+    console.error(e);
+    showResult('fail','Error','','An error occurred. Please try again.');
+  } finally {
+    btn.disabled=false; btn.innerHTML='<span>📸</span> Capture &amp; Record';
+  }
+}
+
+function showResult(cls,name,time,msg,type='',isUnknown=false) {
+  const c=document.getElementById('result-card');
+  c.className='result-card show '+cls;
+  const b=document.getElementById('r-badge');
+  if(cls==='ok'&&type){ b.style.display=''; b.className='result-badge '+type; b.textContent=type.toUpperCase(); }
+  else { b.style.display='none'; }
+  document.getElementById('r-name').textContent=name;
+  document.getElementById('r-time').textContent=time;
+  document.getElementById('r-msg').textContent=msg;
+  document.getElementById('btn-reg-now').style.display=isUnknown?'inline-block':'none';
+}
+
+// ── Event Type Toggle ──────────────────────────────────────
+function setType(t) {
+  eventType = t;
+  document.getElementById('btn-start').className='type-btn'+(t==='start'?' on-start':'');
+  document.getElementById('btn-stop' ).className='type-btn'+(t==='stop' ?' on-stop' :'');
+}
+
+// ── Today Tab ─────────────────────────────────────────────
+function renderToday() {
+  const d = new Date();
+  document.getElementById('today-h1').textContent =
+    d.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const td = today();
+  const emps = Store.emps();
+  const active = emps.filter(e=>dayRec(e.id,td).all.length>0);
+  const tbody = document.getElementById('today-body');
+  if (!active.length) {
+    tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state">
+      <div class="empty-ico">📋</div>
+      <div class="empty-title">No activity today</div>
+      <div class="empty-desc">Records appear once employees clock in</div>
+    </div></td></tr>`; return;
+  }
+  tbody.innerHTML = active.map(emp=>{
+    const r=dayRec(emp.id,td);
+    return `<tr>
+      <td>${empCell(emp)}</td>
+      <td><span class="time-val ${r.s?'':'time-empty'}">${fmtT(r.s)}</span>${earlyStartBadge(emp,r.s)}${lateBadge(emp,r.s)}</td>
+      <td><span class="time-val ${r.e?'':'time-empty'}">${fmtT(r.e)}</span>${earlyBadge(emp,r.e)}</td>
+      <td><span class="hrs-pill">${fmtH(r.dur)}</span>${otBadge(r.dur)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Monthly Tab ────────────────────────────────────────────
+function shiftWeek(n){
+  viewWeek=new Date(viewWeek.getTime()+n*7*86400000);
+  renderWeekly();
+}
+function setReportMode(m){
+  viewMode=m;
+  const isW=(m==='weekly');
+  document.getElementById('nav-monthly').style.display = isW?'none':'flex';
+  document.getElementById('nav-weekly').style.display  = isW?'flex':'none';
+  document.getElementById('btn-mode-monthly').classList.toggle('active',!isW);
+  document.getElementById('btn-mode-weekly').classList.toggle('active', isW);
+  document.getElementById('report-eyebrow').textContent = isW?'Weekly Summary':'Monthly Summary';
+  document.getElementById('kpi-active-lbl').textContent = isW?'Active Days':'Active Employees';
+  if(isW) renderWeekly(); else renderMonthly();
+}
+function shiftMonth(d) {
+  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+d, 1);
+  renderMonthly();
+}
+function renderMonthly() {
+  const y=viewMonth.getFullYear(), m=viewMonth.getMonth();
+  document.getElementById('month-lbl').textContent =
+    viewMonth.toLocaleDateString([],{month:'long',year:'numeric'});
+  const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
+  const allEvts = Store.events().filter(e=>e.ts.startsWith(prefix));
+  const dates = [...new Set(allEvts.map(e=>e.ts.slice(0,10)))].sort();
+  const emps = Store.emps();
+
+  let totalMs=0, activeN=0;
+  const rows = emps.map(emp=>{
+    const days = dates
+      .map(d=>({ d, ...dayRec(emp.id,d) }))
+      .filter(r=>r.all.length>0);
+    const ms = days.reduce((s,r)=>s+(r.dur||0),0);
+    if(days.length) { totalMs+=ms; activeN++; }
+    return { emp, days, ms };
+  }).filter(r=>r.days.length>0);
+
+  document.getElementById('kpi-total').textContent  = fmtH(totalMs);
+  document.getElementById('kpi-avg').textContent    = activeN ? fmtH(Math.round(totalMs/activeN)) : '—';
+  document.getElementById('kpi-active').textContent = activeN||'—';
+
+  const list=document.getElementById('monthly-list');
+  if(!rows.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-ico">📊</div><div class="empty-title">No data this month</div><div class="empty-desc">Records appear once employees clock in</div></div>`;
+    return;
+  }
+  list.innerHTML=rows.map(({emp,days,ms})=>`
+    <div class="acc-item" data-glean-id="month-${emp.id}">
+      <div class="acc-head" onclick="this.parentElement.classList.toggle('open')">
+        ${empCell(emp)}
+        <div class="acc-days">${days.length} day${days.length!==1?'s':''}</div>
+        <div class="acc-hrs">${fmtH(ms)}</div>
+        <div class="chevron">▼</div>
+      </div>
+      <div class="acc-body">
+        <table class="data-table">
+          <thead><tr><th style="padding:10px 16px">Date</th><th style="padding:10px 16px">Start</th><th style="padding:10px 16px">Stop</th><th style="padding:10px 16px">Hours</th></tr></thead>
+          <tbody>${days.map(r=>`<tr>
+            <td style="padding:11px 16px;font-size:13px;color:var(--artifact-text-secondary)">${fmtD(r.d)}</td>
+            <td style="padding:11px 16px"><span class="time-val">${fmtT(r.s)}</span>${earlyStartBadge(emp,r.s)}${lateBadge(emp,r.s)}</td>
+            <td style="padding:11px 16px"><span class="time-val">${fmtT(r.e)}</span>${earlyBadge(emp,r.e)}</td>
+            <td style="padding:11px 16px" class="${isOT(r.dur)?'ot-cell':''}"><span class="hrs-pill">${fmtH(r.dur)}</span>${otBadge(r.dur)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`).join('');
+}
+
+// ── Weekly Tab ─────────────────────────────────────────────
+function fmtWeekLbl(mon){
+  const sun=new Date(mon.getTime()+6*86400000);
+  const o={month:'short',day:'numeric'};
+  return mon.toLocaleDateString([],o)+' – '+sun.toLocaleDateString([],{...o,year:'numeric'});
+}
+function isoDate(d){return d.toISOString().slice(0,10);}
+function renderWeekly(){
+  const mon=viewWeek;
+  const days=Array.from({length:7},(_,i)=>{
+    const d=new Date(mon.getTime()+i*86400000);
+    return {iso:isoDate(d), d};
+  });
+  document.getElementById('week-lbl').textContent=fmtWeekLbl(mon);
+  const todayIso=today();
+  const emps=Store.emps();
+  let totalMs=0, activeDays=0;
+  const rows=emps.map(emp=>{
+    const dayRecs=days.map(({iso})=>({iso,...dayRec(emp.id,iso)}));
+    const hasData=dayRecs.some(r=>r.all&&r.all.length>0);
+    const ms=dayRecs.reduce((s,r)=>s+(r.dur||0),0);
+    if(hasData){totalMs+=ms; activeDays+=dayRecs.filter(r=>r.all&&r.all.length>0).length;}
+    return {emp,dayRecs,ms,hasData};
+  }).filter(r=>r.hasData);
+
+  document.getElementById('kpi-total').textContent  = fmtH(totalMs);
+  document.getElementById('kpi-avg').textContent    = rows.length ? fmtH(Math.round(totalMs/rows.length)) : '—';
+  document.getElementById('kpi-active').textContent = activeDays||'—';
+
+  const list=document.getElementById('monthly-list');
+  if(!rows.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-ico">📆</div><div class="empty-title">No data this week</div><div class="empty-desc">Records appear once employees clock in</div></div>`;
+    return;
+  }
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayNums=days.map(({d})=>d.getDate());
+  const todayIdx=days.findIndex(({iso})=>iso===todayIso);
+
+  // Build weekly grid table
+  const thCols=days.map(({iso,d},i)=>{
+    const isT=(iso===todayIso);
+    return `<th class="${isT?'week-today-col':''}" style="min-width:68px">
+      <div>${dayNames[i]}</div><div style="font-weight:700;color:var(--artifact-text-primary);font-size:13px">${d.getDate()}</div>
+    </th>`;
+  }).join('');
+
+  const gridRows=rows.map(({emp,dayRecs,ms})=>{
+    const av=emp.photo
+      ?`<img class="avatar" src="${emp.photo}" alt="${emp.name}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+      :`<div class="avatar-ph" style="width:28px;height:28px;font-size:10px">${inits(emp.name)}</div>`;
+    const cells=dayRecs.map(({iso,s,e,dur},i)=>{
+      const isT=(iso===todayIso);
+      if(!s&&!e) return `<td class="${isT?'week-today-col':''}" style="padding:10px 4px"><span class="week-cell-off">·</span></td>`;
+      const isOTday=isOT(dur);
+      const isLate=lateBadge(emp,s)!=='';
+      const isEarly=earlyBadge(emp,e)!=='';
+      const isEarlyIn=earlyStartBadge(emp,s)!=='';
+      const cellCls=(isT?'week-today-col ':'')+( isOTday?'week-cell-ot ':'');
+      const miniBadges=[
+        isEarlyIn?'<span class="week-mini-badge wmb-early-start">EARLY IN</span>':'',
+        isLate?'<span class="week-mini-badge wmb-late">LATE</span>':'',
+        isEarly?'<span class="week-mini-badge wmb-early">EARLY OUT</span>':'',
+        isOTday?'<span class="week-mini-badge wmb-ot">OT</span>':''
+      ].filter(Boolean).join('');
+      const sCls=isEarlyIn?'wt-early-start':isLate?'wt-late':'';
+      const eCls=isEarly?'wt-early-end':'';
+      return `<td class="${cellCls.trim()}" style="padding:6px 4px">
+        <div class="week-cell-worked ${isOTday?'ot-cell':''}">${fmtH(dur)}</div>
+        <div class="week-cell-times"><span class="${sCls}">${fmtT(s)}</span><br><span class="${eCls}">${fmtT(e)}</span></div>
+        ${miniBadges?`<div style="margin-top:2px">${miniBadges}</div>`:''}
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td style="padding:10px 14px;text-align:left">
+        <div class="week-name-cell">${av}<div><div class="week-lbl-big">${emp.name}</div><div class="week-lbl-sub">${fmtH(ms)}</div></div></div>
+      </td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  list.innerHTML=`
+    <div style="overflow-x:auto;border:1px solid var(--artifact-border-light);border-radius:12px;margin-bottom:16px">
+      <table class="week-grid">
+        <thead><tr>
+          <th style="text-align:left;padding:10px 14px;min-width:160px">Employee</th>
+          ${thCols}
+        </tr></thead>
+        <tbody>${gridRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function exportWeeklyExcel(){
+  const mon=viewWeek;
+  const days=Array.from({length:7},(_,i)=>{
+    const d=new Date(mon.getTime()+i*86400000);
+    return {iso:isoDate(d),d};
+  });
+  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const emps=Store.emps();
+  // Sheet 1: grid summary
+  const hdr=[{v:'Employee',bold:true},...days.map(({iso,d},i)=>({v:dayNames[i]+' '+d.getDate(),bold:true})),{v:'Total Hours',bold:true}];
+  const sumRows=[hdr];
+  emps.forEach(emp=>{
+    const dayRecs=days.map(({iso})=>({iso,...dayRec(emp.id,iso)}));
+    const hasData=dayRecs.some(r=>r.all&&r.all.length>0);
+    if(!hasData) return;
+    const ms=dayRecs.reduce((s,r)=>s+(r.dur||0),0);
+    const row=[emp.name,...dayRecs.map(r=>r.dur?fmtH(r.dur):'—'),fmtH(ms)];
+    sumRows.push(row);
+  });
+  // Sheet 2: detail
+  const detRows=[[{v:'Employee',bold:true},{v:'Date',bold:true},{v:'Day',bold:true},{v:'Start',bold:true},{v:'Stop',bold:true},{v:'Hours',bold:true}]];
+  emps.forEach(emp=>{
+    days.forEach(({iso,d},i)=>{
+      const r=dayRec(emp.id,iso);
+      if(!r.all||!r.all.length) return;
+      detRows.push([emp.name,iso,dayNames[i],fmtT(r.s),fmtT(r.e),fmtH(r.dur)]);
+    });
+  });
+  const wkLbl=fmtWeekLbl(mon).replace(/[^a-zA-Z0-9_\- ]/g,'').replace(/\s+/g,'_');
+  downloadXlsx([{name:'Weekly Grid',data:sumRows},{name:'Daily Records',data:detRows}],'FaceTrack_Week_'+wkLbl+'.xlsx');
+  toast('✅ Weekly Excel downloaded!');
+}
+
+// ── Admin ──────────────────────────────────────────────────
+function doLogin() {
+  if (document.getElementById('pass-input').value === Store.pass()) {
+    adminOk=true;
+    document.getElementById('gate').style.display='none';
+    document.getElementById('admin-panel').style.display='block';
+    renderAdmin();
+  } else { toast('Incorrect password.'); }
+}
+document.getElementById('pass-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();doLogin();}
+});
+function doLogout() {
+  adminOk=false;
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('gate').style.display='block';
+  document.getElementById('pass-input').value='';
+}
+
+function openChangePass() {
+  document.getElementById('cp-current').value='';
+  document.getElementById('cp-new').value='';
+  document.getElementById('cp-confirm').value='';
+  document.getElementById('cp-error').style.display='none';
+  const m=document.getElementById('chpass-modal');
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('cp-current').focus(),100);
+}
+function closeChangePass() {
+  document.getElementById('chpass-modal').style.display='none';
+}
+function saveNewPass() {
+  const cur = document.getElementById('cp-current').value;
+  const nw  = document.getElementById('cp-new').value.trim();
+  const con = document.getElementById('cp-confirm').value.trim();
+  const err = document.getElementById('cp-error');
+  err.style.display='none';
+  if (cur !== Store.pass()) {
+    err.textContent='Current password is incorrect.'; err.style.display='block'; return;
+  }
+  if (nw.length < 4) {
+    err.textContent='New password must be at least 4 characters.'; err.style.display='block'; return;
+  }
+  if (nw !== con) {
+    err.textContent='New passwords do not match.'; err.style.display='block'; return;
+  }
+  localStorage.setItem('ft_pass', nw);
+  closeChangePass();
+  toast('✅ Password changed successfully!');
+}
+
+function renderAdmin() { renderEmpTable(); fillEmpFilter(); renderAdminRec(); }
+
+function empCell(emp) {
+  const av = emp.photo
+    ? `<img class="avatar" src="${emp.photo}" alt="${emp.name}">`
+    : `<div class="avatar-ph">${inits(emp.name)}</div>`;
+  return `<div class="emp-cell">${av}<span class="emp-name">${emp.name}</span></div>`;
+}
+
+function renderEmpTable() {
+  const emps=Store.emps(), tb=document.getElementById('emp-body');
+  if(!emps.length){
+    tb.innerHTML=`<tr><td colspan="4"><div class="empty-state" style="padding:28px">
+      <div class="empty-title" style="font-size:14px">No employees yet</div>
+      <div class="empty-desc">Click "+ Add Employee" to register the first employee.</div>
+    </div></td></tr>`; return;
+  }
+  tb.innerHTML=emps.map(emp=>`<tr data-glean-id="erow-${emp.id}">
+    <td>${empCell(emp)}</td>
+    <td style="font-size:12px;color:var(--artifact-text-secondary)">${emp.expectedStart||'09:00'} &ndash; ${emp.expectedEnd||'17:00'}<br><button class="btn-sm" style="margin-top:3px" onclick="openSchedModal('${emp.id}')">&#9998; Edit</button></td>
+    <td style="font-size:12px;color:var(--artifact-text-secondary)">${new Date(emp.reg).toLocaleDateString()}</td>
+    <td><button class="btn-del" type="button" onclick="delEmp('${emp.id}')">Delete</button></td>
+  </tr>`).join('');
+}
+
+function delEmp(id) {
+  if(!confirm('Delete this employee and ALL their time records?')) return;
+  Store.saveEmps(Store.emps().filter(e=>e.id!==id));
+  Store.saveEvts(Store.events().filter(e=>e.empId!==id));
+  renderAdmin(); toast('Employee deleted.');
+}
+
+function fillEmpFilter() {
+  const sel=document.getElementById('f-emp');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Employees</option>';
+  Store.emps().forEach(emp=>{
+    const o=document.createElement('option');
+    o.value=emp.id; o.textContent=emp.name; sel.appendChild(o);
+  });
+  sel.value=cur;
+}
+
+function clearFilters() {
+  document.getElementById('f-emp').value='';
+  document.getElementById('f-date').value='';
+  renderAdminRec();
+}
+
+function renderAdminRec() {
+  const fEmp=document.getElementById('f-emp').value;
+  const fDate=document.getElementById('f-date').value;
+  const emps=Store.emps();
+  const allEvts=Store.events();
+  const groups={};
+  allEvts.forEach(evt=>{
+    if(fEmp && evt.empId!==fEmp) return;
+    if(fDate && evt.ts.slice(0,10)!==fDate) return;
+    const k=evt.empId+'|'+evt.ts.slice(0,10);
+    if(!groups[k]) groups[k]={empId:evt.empId,dateStr:evt.ts.slice(0,10)};
+  });
+  const rows=Object.values(groups).sort((a,b)=>b.dateStr.localeCompare(a.dateStr)||a.empId.localeCompare(b.empId));
+  const tb=document.getElementById('rec-body');
+  if(!rows.length){
+    tb.innerHTML=`<tr><td colspan="7"><div class="empty-state" style="padding:28px"><div class="empty-title" style="font-size:14px">No records found</div></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML=rows.map(row=>{
+    const emp=emps.find(e=>e.id===row.empId); if(!emp) return '';
+    const r=dayRec(emp.id,row.dateStr);
+    const hasEdit=r.all.some(e=>e.edited);
+    return `<tr data-glean-id="rrow-${emp.id}-${row.dateStr}">
+      <td>${empCell(emp)}</td>
+      <td style="font-size:13px">${fmtD(row.dateStr)}</td>
+      <td><span class="time-val ${r.s?'':'time-empty'}">${fmtT(r.s)}</span>${hasEdit?'<span class="edited-tag">edited</span>':''}</td>
+      <td><span class="time-val ${r.e?'':'time-empty'}">${fmtT(r.e)}</span></td>
+      <td><span class="hrs-pill">${fmtH(r.dur)}</span></td>
+      <td style="font-size:12px;color:var(--artifact-text-secondary)">${r.all.length} scan${r.all.length!==1?'s':''}</td>
+      <td><button class="btn-sec" type="button" onclick="openEdit('${emp.id}','${row.dateStr}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Edit Modal ─────────────────────────────────────────────
+function openEdit(empId, dateStr) {
+  editCtx={empId,dateStr};
+  const emp=Store.emps().find(e=>e.id===empId);
+  const r=dayRec(empId,dateStr);
+  document.getElementById('edit-sub').textContent=`Editing record for ${emp?.name} — ${fmtD(dateStr)}`;
+  const toLocal=iso=>iso?new Date(new Date(iso)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';
+  document.getElementById('edit-start').value=toLocal(r.s);
+  document.getElementById('edit-stop').value=toLocal(r.e);
+  // Scan list
+  const scanHtml=r.all.sort((a,b)=>a.ts.localeCompare(b.ts)).map((ev,i)=>{
+    const isEffS=(ev.type==='start' && r.s===ev.ts);
+    const isEffE=(ev.type==='stop'  && r.e===ev.ts);
+    return `<div class="scan-item">
+      <div>
+        <span class="scan-type ${ev.type}">${ev.type}</span>
+        ${isEffS||isEffE?`<span class="scan-eff">★ effective ${isEffS?'start':'stop'}</span>`:''}
+      </div>
+      <div class="mono" style="font-size:12px">${fmtT(ev.ts)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('edit-scan-list').innerHTML=scanHtml||'<div style="font-size:13px;color:var(--artifact-text-secondary)">No events</div>';
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editCtx=null; }
+function saveEdit() {
+  if(!editCtx) return;
+  const{empId,dateStr}=editCtx;
+  const sv=document.getElementById('edit-start').value;
+  const ev=document.getElementById('edit-stop').value;
+  let evts=Store.events().filter(e=>!(e.empId===empId&&e.ts.slice(0,10)===dateStr));
+  if(sv) evts.push({id:uid(),empId,type:'start',ts:new Date(sv).toISOString(),edited:true});
+  if(ev) evts.push({id:uid(),empId,type:'stop', ts:new Date(ev).toISOString(),edited:true});
+  Store.saveEvts(evts);
+  closeEditModal(); renderAdminRec(); toast('Record updated.');
+}
+function deleteRecord() {
+  if(!editCtx) return;
+  if(!confirm('Delete all scan events for this employee on this day?')) return;
+  const{empId,dateStr}=editCtx;
+  Store.saveEvts(Store.events().filter(e=>!(e.empId===empId&&e.ts.slice(0,10)===dateStr)));
+  closeEditModal(); renderAdminRec(); toast('Record deleted.');
+}
+
+// ── Register Modal ─────────────────────────────────────────
+// ── Registration source (webcam vs upload) ────────────────
+let regSrc='cam';
+let uploadedImgEl=null;
+let imgDragBound=false;
+
+// Image drag/zoom state
+const imgState={x:0,y:0,scale:1,dragging:false,startX:0,startY:0};
+
+// Apply current imgState to the preview element
+function redrawCanvas() {
+  if(!uploadedImgEl) return;
+  const cv=document.getElementById('upload-canvas');
+  if(!cv) return;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.save();
+  ctx.translate(imgState.x, imgState.y);
+  ctx.scale(imgState.scale, imgState.scale);
+  ctx.drawImage(uploadedImgEl, 0, 0);
+  ctx.restore();
+}
+
+// Zoom toward container center (called by slider)
+function setImgZoom(val) {
+  const newScale=Math.max(0.1,val/100);
+  const c=document.getElementById('upload-drop');
+  const cw=c.offsetWidth||320, ch=c.offsetHeight||240;
+  const cx=cw/2, cy=ch/2;
+  imgState.x=cx-(cx-imgState.x)*(newScale/imgState.scale);
+  imgState.y=cy-(cy-imgState.y)*(newScale/imgState.scale);
+  imgState.scale=newScale;
+  document.getElementById('zoom-pct').textContent=Math.round(newScale*100)+'%';
+  redrawCanvas();
+}
+
+// Return the live canvas (already shows the positioned/zoomed image)
+function capturePositionedImg() {
+  return document.getElementById('upload-canvas');
+}
+
+// Bind mouse/touch/wheel drag handlers to upload-drop (called once)
+function bindImgDrag() {
+  if(imgDragBound) return; imgDragBound=true;
+  const c=document.getElementById('upload-drop');
+
+  // Click on empty state → open file picker
+  c.addEventListener('click', e=>{
+    if(!uploadedImgEl) document.getElementById('img-file-input').click();
+  });
+
+  // ── Mouse drag ──
+  c.addEventListener('mousedown', e=>{
+    if(!uploadedImgEl) return;
+    imgState.dragging=true;
+    imgState.startX=e.clientX-imgState.x;
+    imgState.startY=e.clientY-imgState.y;
+    c.classList.add('drag-active');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!imgState.dragging) return;
+    imgState.x=e.clientX-imgState.startX;
+    imgState.y=e.clientY-imgState.startY;
+    redrawCanvas();
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!imgState.dragging) return;
+    imgState.dragging=false;
+    document.getElementById('upload-drop').classList.remove('drag-active');
+  });
+
+  // ── Touch drag ──
+  c.addEventListener('touchstart', e=>{
+    if(!uploadedImgEl) return;
+    const t=e.touches[0];
+    imgState.dragging=true;
+    imgState.startX=t.clientX-imgState.x;
+    imgState.startY=t.clientY-imgState.y;
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(!imgState.dragging) return;
+    const t=e.touches[0];
+    imgState.x=t.clientX-imgState.startX;
+    imgState.y=t.clientY-imgState.startY;
+    redrawCanvas();
+    e.preventDefault();
+  },{passive:false});
+  document.addEventListener('touchend', ()=>{ imgState.dragging=false; });
+
+  // ── Scroll-to-zoom (zoom toward cursor) ──
+  c.addEventListener('wheel', e=>{
+    if(!uploadedImgEl) return;
+    e.preventDefault();
+    const factor=e.deltaY>0 ? 0.92 : 1.08;
+    const rect=c.getBoundingClientRect();
+    const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+    const newScale=Math.max(0.1, Math.min(8, imgState.scale*factor));
+    const ratio=newScale/imgState.scale;
+    imgState.x=cx-(cx-imgState.x)*ratio;
+    imgState.y=cy-(cy-imgState.y)*ratio;
+    imgState.scale=newScale;
+    const pct=Math.round(newScale*100);
+    document.getElementById('img-zoom-slider').value=Math.min(500,pct);
+    document.getElementById('zoom-pct').textContent=pct+'%';
+    redrawCanvas();
+  },{passive:false});
+}
+
+function switchRegSrc(src) {
+  regSrc=src;
+  document.getElementById('src-cam-btn').className='src-tab'+(src==='cam'?' active':'');
+  document.getElementById('src-img-btn').className='src-tab'+(src==='img'?' active':'');
+  document.getElementById('reg-src-cam').style.display=src==='cam'?'':'none';
+  document.getElementById('reg-src-img').style.display=src==='img'?'':'none';
+  const btn=document.getElementById('reg-cap-btn');
+  btn.textContent=src==='cam'?'📸 Capture Face':'✓ Register from Image';
+  if(src==='cam') startRegCam();
+  else if(regStream){ regStream.getTracks().forEach(t=>t.stop()); regStream=null; }
+}
+
+function handleImgUpload(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.getElementById('upload-drop');
+      const cw=c.offsetWidth||320, ch=c.offsetHeight||240;
+      const cv=document.getElementById('upload-canvas');
+      cv.width=cw; cv.height=ch;
+      // Scale to fill container, then center
+      const s=Math.max(cw/img.naturalWidth, ch/img.naturalHeight);
+      imgState.scale=s;
+      imgState.x=(cw - img.naturalWidth*s)/2;
+      imgState.y=(ch - img.naturalHeight*s)/2;
+      uploadedImgEl=img;
+      redrawCanvas();
+      cv.style.display='block';
+      document.getElementById('upload-drop-inner').style.display='none';
+      document.getElementById('face-guide').style.display='block';
+      document.getElementById('img-controls').style.display='block';
+      c.classList.add('has-img');
+      const pct=Math.round(s*100);
+      document.getElementById('img-zoom-slider').value=Math.min(500,pct);
+      document.getElementById('zoom-pct').textContent=pct+'%';
+      document.getElementById('reg-status').textContent='Drag the image so the face sits inside the oval.';
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function startRegCam() {
+  try {
+    if(regStream){ regStream.getTracks().forEach(t=>t.stop()); regStream=null; }
+    regStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:480},height:{ideal:360},facingMode:'user'}});
+    document.getElementById('reg-video').srcObject=regStream;
+  } catch(e){ document.getElementById('reg-status').textContent='⚠ Camera unavailable.'; }
+}
+
+async function openRegModal() {
+  document.getElementById('reg-modal').classList.add('open');
+  document.getElementById('reg-name').value='';
+  document.getElementById('reg-status').textContent='';
+  document.getElementById('reg-cap-btn').disabled=false;
+  // Reset upload state
+  uploadedImgEl=null;
+  imgState.x=0; imgState.y=0; imgState.scale=1; imgState.dragging=false;
+  const _cv=document.getElementById('upload-canvas');
+  if(_cv){ _cv.style.display='none'; _cv.getContext('2d').clearRect(0,0,_cv.width,_cv.height); }
+  document.getElementById('upload-drop-inner').style.display='flex';
+  document.getElementById('upload-drop').classList.remove('has-img','drag-active');
+  document.getElementById('face-guide').style.display='none';
+  document.getElementById('img-controls').style.display='none';
+  document.getElementById('img-file-input').value='';
+  document.getElementById('img-zoom-slider').value=100;
+  document.getElementById('zoom-pct').textContent='100%';
+  // Default to webcam
+  regSrc='cam';
+  document.getElementById('src-cam-btn').className='src-tab active';
+  document.getElementById('src-img-btn').className='src-tab';
+  document.getElementById('reg-src-cam').style.display='';
+  document.getElementById('reg-src-img').style.display='none';
+  document.getElementById('reg-cap-btn').textContent='📸 Capture Face';
+  bindImgDrag(); // idempotent — sets up once
+  await startRegCam();
+}
+
+function closeRegModal() {
+  document.getElementById('reg-modal').classList.remove('open');
+  if(regStream){ regStream.getTracks().forEach(t=>t.stop()); regStream=null; }
+  imgState.dragging=false; uploadedImgEl=null;
+  const _cv2=document.getElementById('upload-canvas');
+  if(_cv2){ _cv2.style.display='none'; _cv2.getContext('2d').clearRect(0,0,_cv2.width,_cv2.height); }
+  document.getElementById('upload-drop').classList.remove('has-img','drag-active');
+}
+
+async function doRegCapture() {
+  const name=document.getElementById('reg-name').value.trim();
+  if(!name){ toast('Please enter a full name.'); return; }
+  const btn=document.getElementById('reg-cap-btn'), st=document.getElementById('reg-status');
+  btn.disabled=true;
+
+  if(regSrc==='img') {
+    // ── Register from uploaded image (uses current drag/zoom position) ──
+    if(!uploadedImgEl){ toast('Please upload an image first.'); btn.disabled=false; return; }
+    btn.textContent='🔍 Processing…'; st.textContent='Detecting face in positioned view…';
+    try {
+      const posCanvas=capturePositionedImg();
+      const desc=await getDescriptor(posCanvas);
+      if(!desc){
+        st.textContent='⚠ No face detected. Drag the face into the oval guide and try again.';
+        btn.disabled=false; btn.textContent='✓ Register from Image'; return;
+      }
+      // Thumbnail: centered square crop from positioned canvas
+      const tc=document.createElement('canvas'); tc.width=tc.height=80;
+      const pw=posCanvas.width, ph=posCanvas.height;
+      const sq=Math.min(pw,ph);
+      tc.getContext('2d').drawImage(posCanvas,(pw-sq)/2,(ph-sq)/2,sq,sq,0,0,80,80);
+      const photo=tc.toDataURL('image/jpeg',.75);
+      const emp={id:uid(),name,desc:Array.from(desc),photo,expectedStart:'09:00',expectedEnd:'17:00',reg:new Date().toISOString()};
+      const emps=Store.emps(); emps.push(emp); Store.saveEmps(emps);
+      st.textContent='✓ '+name+' registered from image!';
+      toast(name+' registered successfully!');
+      setTimeout(()=>{ closeRegModal(); renderAdmin(); },1100);
+    } catch(e){ st.textContent='Error processing image.'; btn.disabled=false; btn.textContent='✓ Register from Image'; }
+  } else {
+    // ── Register from webcam ──
+    btn.textContent='🔍 Processing…'; st.textContent='Detecting face…';
+    try {
+      const cv=capture(document.getElementById('reg-video'));
+      const desc=await getDescriptor(cv);
+      if(!desc){ st.textContent='⚠ No face detected. Center your face and try again.'; btn.disabled=false; btn.textContent='📸 Capture Face'; return; }
+      const tc=document.createElement('canvas'); tc.width=tc.height=80;
+      const tx=tc.getContext('2d');
+      const v=document.getElementById('reg-video');
+      const sz=Math.min(v.videoWidth,v.videoHeight);
+      const sx=(v.videoWidth-sz)/2, sy=(v.videoHeight-sz)/2;
+      tx.translate(80,0); tx.scale(-1,1);
+      tx.drawImage(v,sx,sy,sz,sz,0,0,80,80);
+      const photo=tc.toDataURL('image/jpeg',.7);
+      const emp={id:uid(),name,desc:Array.from(desc),photo,expectedStart:'09:00',expectedEnd:'17:00',reg:new Date().toISOString()};
+      const emps=Store.emps(); emps.push(emp); Store.saveEmps(emps);
+      st.textContent='✓ '+name+' registered!';
+      toast(name+' registered successfully!');
+      setTimeout(()=>{ closeRegModal(); renderAdmin(); },1100);
+    } catch(e){ st.textContent='Error. Please try again.'; btn.disabled=false; btn.textContent='📸 Capture Face'; }
+  }
+}
+
+// ── Close modals on backdrop click ────────────────────────
+document.getElementById('reg-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeRegModal(); });
+document.getElementById('edit-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeEditModal(); });
+
+// ── Demo Data ──────────────────────────────────────────────
+function loadDemo() {
+  if(!confirm('Load demo data? This adds sample employees with past time records. Existing data is kept.')) return;
+  const names=['Anna Berg','Jonas Lindqvist','Maria Eriksson','Erik Svensson'];
+  let emps=Store.emps();
+  let evts=Store.events();
+  const newEmps=[];
+  names.forEach(n=>{
+    if(emps.some(e=>e.name===n)) return; // skip if already exists
+    const emp={id:uid(),name:n,desc:null,photo:null,expectedStart:'09:00',expectedEnd:'17:00',reg:new Date().toISOString(),demo:true};
+    newEmps.push(emp); emps.push(emp);
+  });
+  Store.saveEmps(emps);
+  // Generate 20 days of demo records for each new employee
+  const demoEmps=[...emps.filter(e=>e.demo)];
+  demoEmps.forEach(emp=>{
+    for(let i=20;i>=1;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      if(d.getDay()===0||d.getDay()===6) continue; // skip weekends
+      const ds=d.toISOString().slice(0,10);
+      // start: 8:00-9:30
+      const sh=8+Math.random()*1.5, sm=Math.floor(Math.random()*60);
+      const sDate=new Date(ds+'T'+String(Math.floor(sh)).padStart(2,'0')+':'+String(sm).padStart(2,'0')+':00');
+      // stop: 16:30-18:00
+      const eh=16.5+Math.random()*1.5, em=Math.floor(Math.random()*60);
+      const eDate=new Date(ds+'T'+String(Math.floor(eh)).padStart(2,'0')+':'+String(em).padStart(2,'0')+':00');
+      evts.push({id:uid(),empId:emp.id,type:'start',ts:sDate.toISOString()});
+      evts.push({id:uid(),empId:emp.id,type:'stop', ts:eDate.toISOString()});
+    }
+  });
+  Store.saveEvts(evts);
+  renderAdmin(); toast('Demo data loaded! Check Monthly Report to explore.');
+}
+
+// ── Excel Export ───────────────────────────────────────────
+// ─── Pure JS xlsx writer (no external dependencies) ─────────────────────────
+(function(){
+  // CRC32 table
+  const T=new Uint32Array(256);
+  for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);T[i]=c;}
+  function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=T[(c^b[i])&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+
+  // little-endian helpers — return Uint8Array slices
+  function le2(n){return new Uint8Array([n&255,(n>>8)&255]);}
+  function le4(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255]);}
+  function cat(...a){const len=a.reduce((s,x)=>s+x.length,0),o=new Uint8Array(len);let p=0;for(const x of a){o.set(x,p);p+=x.length;}return o;}
+  const enc=new TextEncoder();
+
+  // Local file header — exactly 30 bytes fixed + filename + data
+  function localHeader(nb,data){
+    const crc=crc32(data);
+    return cat(
+      new Uint8Array([0x50,0x4B,0x03,0x04]), // signature
+      le2(0x0014),                            // version needed: 2.0
+      le2(0),                                 // flags
+      le2(0),                                 // compression: stored
+      le2(0), le2(0),                         // mod time, mod date
+      le4(crc),                               // crc-32
+      le4(data.length),                       // compressed size
+      le4(data.length),                       // uncompressed size
+      le2(nb.length),                         // filename length
+      le2(0)                                  // extra field length
+      // total fixed: 30 bytes
+    );
+  }
+
+  // Central directory entry — exactly 46 bytes fixed + filename
+  function cdEntry(nb,data,offset){
+    const crc=crc32(data);
+    return cat(
+      new Uint8Array([0x50,0x4B,0x01,0x02]), // signature
+      le2(0x0314),                            // version made by (Unix/2.0)
+      le2(0x0014),                            // version needed: 2.0
+      le2(0),                                 // flags
+      le2(0),                                 // compression: stored
+      le2(0), le2(0),                         // mod time, mod date
+      le4(crc),                               // crc-32
+      le4(data.length),                       // compressed size
+      le4(data.length),                       // uncompressed size
+      le2(nb.length),                         // filename length
+      le2(0),                                 // extra field length
+      le2(0),                                 // file comment length
+      le2(0),                                 // disk number start
+      le2(0),                                 // internal attributes
+      le4(0),                                 // external attributes
+      le4(offset)                             // local header offset
+      // total fixed: 46 bytes
+    );
+  }
+
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  window.downloadXlsx=function(sheets,filename){
+    const ss=[],ssMap={};
+    function si(s){s=String(s);if(ssMap[s]===undefined){ssMap[s]=ss.length;ss.push(s);}return ssMap[s];}
+
+    // Build worksheet XML for each sheet
+    const wsXmls=sheets.map(({data})=>{
+      let rows='';
+      data.forEach((row,ri)=>{
+        let cells='';
+        row.forEach((cell,ci)=>{
+          if(cell===null||cell===undefined||cell==='')return;
+          const col=ci<26?String.fromCharCode(65+ci):'A'+String.fromCharCode(65+ci-26);
+          const ref=col+(ri+1);
+          let v,bold=false;
+          if(typeof cell==='object'&&'v'in cell){v=cell.v;bold=!!cell.bold;}else{v=cell;}
+          const s=bold?1:0;
+          if(typeof v==='number'){cells+=`<c r="${ref}" s="${s}"><v>${v}</v></c>`;}
+          else{cells+=`<c r="${ref}" t="s" s="${s}"><v>${si(v)}</v></c>`;}
+        });
+        if(cells)rows+=`<row r="${ri+1}">${cells}</row>`;
+      });
+      return`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows}</sheetData></worksheet>`;
+    });
+
+    // Build package XML files
+    const n=sheets.length;
+    const sheetOverrides=sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+    const ct=`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheetOverrides}<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+    const pkgRels=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    const sheetTags=sheets.map((s,i)=>`<sheet name="${esc(s.name)}" sheetId="${i+1}" r:id="rId${i+2}"/>`).join('');
+    const wbXml=`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheetTags}</sheets></workbook>`;
+    const relTags=sheets.map((_,i)=>`<Relationship Id="rId${i+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('');
+    const wbRels=`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>${relTags}</Relationships>`;
+    const styles=`<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>`;
+
+    // ss_xml must be built after all wsXmls (si() calls accumulate the string table)
+    const siTags=ss.map(s=>`<si><t xml:space="preserve">${esc(s)}</t></si>`).join('');
+    const ssXml=`<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${ss.length}" uniqueCount="${ss.length}">${siTags}</sst>`;
+
+    // File list
+    const files=[
+      ['[Content_Types].xml', enc.encode(ct)],
+      ['_rels/.rels',         enc.encode(pkgRels)],
+      ['xl/workbook.xml',     enc.encode(wbXml)],
+      ['xl/_rels/workbook.xml.rels', enc.encode(wbRels)],
+      ['xl/sharedStrings.xml',enc.encode(ssXml)],
+      ['xl/styles.xml',       enc.encode(styles)],
+      ...sheets.map((s,i)=>[`xl/worksheets/sheet${i+1}.xml`, enc.encode(wsXmls[i])]),
+    ];
+
+    // Build ZIP (stored, no compression)
+    const localParts=[], cdInfos=[];
+    let offset=0;
+    for(const [name,data] of files){
+      const nb=enc.encode(name);
+      const lh=localHeader(nb,data);
+      localParts.push(cat(lh,nb,data));
+      cdInfos.push([nb,data,offset]);
+      offset+=lh.length+nb.length+data.length;
+    }
+
+    const cdStart=offset;
+    const cdParts=cdInfos.map(([nb,data,fo])=>cat(cdEntry(nb,data,fo),nb));
+    const cdBytes=cat(...cdParts);
+
+    const eocd=cat(
+      new Uint8Array([0x50,0x4B,0x05,0x06,0,0,0,0]),
+      le2(files.length), le2(files.length),
+      le4(cdBytes.length), le4(cdStart),
+      le2(0)
+    );
+
+    const blob=new Blob([cat(...localParts,cdBytes,eocd)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1500);
+  };
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
+function exportTodayExcel() {
+  const td=today();
+  const emps=Store.emps();
+  const hdr=[{v:'Employee',bold:true},{v:'Start Time (effective)',bold:true},{v:'Stop Time (effective)',bold:true},{v:'Hours Worked',bold:true},{v:'Total Scans',bold:true}];
+  const rows=[hdr];
+  emps.forEach(emp=>{
+    const r=dayRec(emp.id,td);
+    if(!r.all.length) return;
+    rows.push([emp.name, r.s?fmtT(r.s):'—', r.e?fmtT(r.e):'—', fmtH(r.dur), r.all.length]);
+  });
+  if(rows.length===1){ toast('No data to export for today.'); return; }
+  downloadXlsx([{name:'Today',data:rows}],'FaceTrack_Today_'+td+'.xlsx');
+  toast('✅ Excel file downloaded!');
+}
+
+function exportMonthlyExcel() {
+  const y=viewMonth.getFullYear(), mo=viewMonth.getMonth();
+  const prefix=`${y}-${String(mo+1).padStart(2,'0')}`;
+  const allEvts=Store.events().filter(e=>e.ts.startsWith(prefix));
+  const dates=[...new Set(allEvts.map(e=>e.ts.slice(0,10)))].sort();
+  const emps=Store.emps();
+
+  // Sheet 1: Summary
+  const bh=v=>({v,bold:true});
+  const sumRows=[[bh('Employee'),bh('Working Days'),bh('Total Hours'),bh('Avg Hours / Day')]];
+  let grandMs=0;
+  emps.forEach(emp=>{
+    const days=dates.map(d=>({d,...dayRec(emp.id,d)})).filter(r=>r.all.length>0);
+    if(!days.length) return;
+    const ms=days.reduce((s,r)=>s+(r.dur||0),0);
+    grandMs+=ms;
+    sumRows.push([emp.name, days.length, fmtH(ms), fmtH(days.length?Math.round(ms/days.length):0)]);
+  });
+  sumRows.push(['','',{v:'Grand Total',bold:true},{v:fmtH(grandMs),bold:true}]);
+
+  // Sheet 2: Daily detail
+  const detRows=[[bh('Employee'),bh('Date'),bh('Day'),bh('Start Time'),bh('Stop Time'),bh('Hours Worked'),bh('Scan Count'),bh('Note')]];
+  emps.forEach(emp=>{
+    dates.forEach(d=>{
+      const r=dayRec(emp.id,d);
+      if(!r.all.length) return;
+      const dayName=new Date(d).toLocaleDateString([],{weekday:'long'});
+      const note=r.all.some(e=>e.edited)?'Manually edited':'';
+      detRows.push([emp.name,d,dayName,r.s?fmtT(r.s):'—',r.e?fmtT(r.e):'—',fmtH(r.dur),r.all.length,note]);
+    });
+  });
+
+  const mName=viewMonth.toLocaleDateString([],{month:'long',year:'numeric'}).replace(/\s/g,'_');
+  downloadXlsx([{name:'Summary',data:sumRows},{name:'Daily Records',data:detRows}],'FaceTrack_'+mName+'.xlsx');
+  toast('✅ Excel file downloaded!');
+}
+
+// ── Init ───────────────────────────────────────────────────
+viewMonth = new Date(); viewWeek = getWeekStart(new Date());
+document.getElementById('f-date').value = today();
+// ── Global state ───────────────────────────────────────────
+let lastUnknownDescriptor = null;
+
+// ── Startup migration ──────────────────────────────────────
+(function(){
+  const emps=Store.emps(); let ch=false;
+  emps.forEach(e=>{
+    if(!e.expectedStart){e.expectedStart='09:00';ch=true;}
+    if(!e.expectedEnd)  {e.expectedEnd='17:00';  ch=true;}
+  });
+  if(ch) Store.saveEmps(emps);
+  const inp=document.getElementById('ot-threshold');
+  if(inp) inp.value=Store.get('otThreshold',8);
+})();
+
+// ── OT helpers ─────────────────────────────────────────────
+function otThr(){ return Store.get('otThreshold',8); }
+function isOT(ms){ return ms>otThr()*3600000; }
+function otH(ms){ return ((ms/3600000)-otThr()).toFixed(1); }
+function otBadge(ms){ return isOT(ms)?'<span class="ot-badge">+'+otH(ms)+'h OT</span>':''; }
+function lateBadge(emp,iso){
+  if(!emp||!emp.expectedStart||!iso) return '';
+  const[eh,em]=emp.expectedStart.split(':').map(Number);
+  const t=new Date(iso);
+  return(t.getHours()>eh||(t.getHours()===eh&&t.getMinutes()>em))?'<span class="late-badge">LATE</span>':'';
+}
+function earlyBadge(emp,iso){
+  if(!emp||!emp.expectedEnd||!iso) return '';
+  const[eh,em]=emp.expectedEnd.split(':').map(Number);
+  const t=new Date(iso);
+  return(t.getHours()<eh||(t.getHours()===eh&&t.getMinutes()<em))?'<span class="early-badge">EARLY</span>':'';
+}
+
+function earlyStartBadge(emp,iso){
+  if(!emp||!emp.expectedStart||!iso) return '';
+  const[eh,em]=emp.expectedStart.split(':').map(Number);
+  const t=new Date(iso);
+  return(t.getHours()<eh||(t.getHours()===eh&&t.getMinutes()<em))?'<span class="early-start-badge">EARLY IN</span>':'' ;
+}
+
+// ── Schedule Modal ──────────────────────────────────────────
+function openSchedModal(id){
+  const emp=Store.emps().find(e=>e.id===id); if(!emp) return;
+  document.getElementById('sched-emp-id').value=id;
+  document.getElementById('sched-start').value=emp.expectedStart||'09:00';
+  document.getElementById('sched-end').value=emp.expectedEnd||'17:00';
+  document.getElementById('sched-modal').classList.add('show');
+}
+function closeSchedModal(){ document.getElementById('sched-modal').classList.remove('show'); }
+function saveSchedModal(){
+  const id=document.getElementById('sched-emp-id').value;
+  const s=document.getElementById('sched-start').value;
+  const e=document.getElementById('sched-end').value;
+  const emps=Store.emps(); const emp=emps.find(x=>x.id===id);
+  if(emp){emp.expectedStart=s;emp.expectedEnd=e;Store.saveEmps(emps);}
+  closeSchedModal(); renderAdmin();
+}
+
+// ── Quick Register Modal ────────────────────────────────────
+function quickRegister(){
+  if(!lastUnknownDescriptor){toast('No unrecognised face \u2014 press Capture first.');return;}
+  const img=document.getElementById('qr-img');
+  try{
+    const oc=document.getElementById('off-canvas');
+    if(oc&&oc.width>0){
+      const tc=document.createElement('canvas');tc.width=68;tc.height=68;
+      const tx=tc.getContext('2d');const s=Math.min(oc.width,oc.height);
+      tx.translate(68,0);tx.scale(-1,1);
+      tx.drawImage(oc,(oc.width-s)/2,(oc.height-s)/2,s,s,0,0,68,68);
+      img.src=tc.toDataURL('image/jpeg',.85);img.style.display='block';
+    } else {img.style.display='none';}
+  }catch(e){img.style.display='none';}
+  document.getElementById('qr-name').value='';
+  document.getElementById('qr-status').textContent='';
+  document.getElementById('qr-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('qr-name').focus(),80);
+}
+function closeQuickReg(){
+  document.getElementById('qr-modal').classList.remove('show');
+  document.getElementById('qr-status').textContent='';
+  lastUnknownDescriptor=null;
+}
+function saveQuickReg(){
+  const name=document.getElementById('qr-name').value.trim();
+  const st=document.getElementById('qr-status');
+  if(!name){st.textContent='\u26a0 Please enter a name.';st.style.color='var(--artifact-negative)';return;}
+  if(!lastUnknownDescriptor){st.textContent='\u26a0 No face data \u2014 press Capture again.';st.style.color='var(--artifact-negative)';return;}
+  const locs=Store.locs?Store.locs():[];
+  const locId=locs.length?locs[0].id:null;
+  let photo='';
+  try{
+    const oc=document.getElementById('off-canvas');
+    if(oc&&oc.width>0){
+      const tc=document.createElement('canvas');tc.width=80;tc.height=80;
+      const tx=tc.getContext('2d');const s=Math.min(oc.width,oc.height);
+      tx.translate(80,0);tx.scale(-1,1);
+      tx.drawImage(oc,(oc.width-s)/2,(oc.height-s)/2,s,s,0,0,80,80);
+      photo=tc.toDataURL('image/jpeg',.75);
+    }
+  }catch(e){}
+  const emp={id:uid(),name,desc:Array.from(lastUnknownDescriptor),photo,locId,
+    expectedStart:'09:00',expectedEnd:'17:00',reg:new Date().toISOString()};
+  const emps=Store.emps();emps.push(emp);Store.saveEmps(emps);
+  // auto-record start time on registration
+  const evts=Store.events();
+  evts.push({id:uid(),empId:emp.id,type:'start',ts:new Date().toISOString(),auto:true});
+  Store.saveEvts(evts);
+  st.textContent='\u2713 '+name+' registered & clocked in!';
+  st.style.color='var(--artifact-positive)';
+  toast(name+' registered \u2014 Start time recorded!');
+  lastUnknownDescriptor=null;
+  setTimeout(()=>{document.getElementById('qr-modal').classList.remove('show');renderAdmin();renderToday();},900);
+}
+
+// ── PDF Export ──────────────────────────────────────────────
+function exportPDF(){
+  const isW=document.getElementById('btn-mode-weekly')&&
+    document.getElementById('btn-mode-weekly').classList.contains('active');
+  let title,dateRange,rows;
+  if(isW){
+    const mon=new Date(viewWeek);
+    const sun=new Date(mon.getTime()+6*86400000);
+    title='Weekly Timesheet';
+    dateRange=mon.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})+
+      ' – '+sun.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    const days=[];for(let i=0;i<7;i++){const d=new Date(mon.getTime()+i*86400000);days.push(isoDate(d));}
+    rows=Store.emps().map(emp=>{
+      const dd=days.map(d=>{const r=dayRec(emp.id,d);return{d,r};}).filter(x=>x.r.all.length>0);
+      if(!dd.length)return null;
+      return{emp,dd,tot:dd.reduce((s,x)=>s+(x.r.dur||0),0)};
+    }).filter(Boolean);
+  } else {
+    title='Monthly Timesheet';
+    dateRange=viewMonth.toLocaleDateString([],{month:'long',year:'numeric'});
+    const y=viewMonth.getFullYear(),mo=viewMonth.getMonth();
+    const pfx=y+'-'+String(mo+1).padStart(2,'0');
+    const dates=[...new Set(Store.events().filter(e=>e.ts.startsWith(pfx)).map(e=>e.ts.slice(0,10)))].sort();
+    rows=Store.emps().map(emp=>{
+      const dd=dates.map(d=>{const r=dayRec(emp.id,d);return{d,r};}).filter(x=>x.r.all.length>0);
+      if(!dd.length)return null;
+      return{emp,dd,tot:dd.reduce((s,x)=>s+(x.r.dur||0),0)};
+    }).filter(Boolean);
+  }
+  if(!rows.length){toast('No data to export.');return;}
+  const OT=otThr();
+  const sections=rows.map(function(item){
+    var emp=item.emp,dd=item.dd,tot=item.tot;
+    var sch=(emp.expectedStart||'09:00')+' – '+(emp.expectedEnd||'17:00');
+    var trows=dd.map(function(x){
+      var d=x.d,r=x.r;
+      var ei=earlyStartBadge(emp,r.s)?'<b style="color:#2563eb"> EARLY IN</b>':''; var lt=lateBadge(emp,r.s)?'<b style="color:#c00"> LATE</b>':'';
+      var el=earlyBadge(emp,r.e)?'<b style="color:#c80"> EARLY</b>':'';
+      var ot=isOT(r.dur)?'<b style="color:#c60"> +'+otH(r.dur)+'h OT</b>':'';
+      var bg=isOT(r.dur)?'background:#fff8ee':'';
+      return '<tr style="'+bg+'"><td>'+fmtD(d)+'</td><td>'+fmtT(r.s)+ei+lt+'</td><td>'+fmtT(r.e)+el+'</td>'
+            +'<td>'+fmtH(r.dur)+ot+'</td><td>'+r.all.length+'</td></tr>';
+    }).join('');
+    var hdrs=['Date','Start','Stop','Hours','Scans'].map(function(h){
+      return '<th style="text-align:left;padding:5px 7px;border-bottom:1px solid #ccc">'+h+'</th>';
+    }).join('');
+    return '<div style="margin-bottom:28px;page-break-inside:avoid">'
+          +'<h3 style="margin:0 0 3px;font-size:14px">'+emp.name+'</h3>'
+          +'<p style="margin:0 0 7px;font-size:11px;color:#666">Schedule: '+sch+' | Total: '+fmtH(tot)+'</p>'
+          +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+          +'<thead><tr style="background:#f0f0f0">'+hdrs+'</tr></thead>'
+          +'<tbody>'+trows+'</tbody>'
+          +'<tfoot><tr>'
+          +'<td colspan="3" style="padding:5px 7px;border-top:2px solid #333;font-weight:700">Total</td>'
+          +'<td colspan="2" style="padding:5px 7px;border-top:2px solid #333;font-weight:700">'+fmtH(tot)+'</td>'
+          +'</tr></tfoot></table></div>';
+  }).join('');
+  var style='<style>body{font-family:Arial,sans-serif;padding:20px 28px;max-width:860px;margin:0 auto}'
+           +'h1{font-size:18px;margin-bottom:3px}.sub{font-size:12px;color:#555;margin-bottom:20px}'
+           +'table{width:100%;border-collapse:collapse}th,td{padding:4px 7px}'
+           +'@media print{body{padding:8px 14px}}</style>';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+style+'</head><body>'
+          +'<h1>'+title+'</h1><div class="sub">'+dateRange+' • OT threshold: '+OT+'h/day</div>'
+          +sections
+          +'</body></html>';
+  var w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){w.print();},400);
+}
+
+loadModels();
+</script>
+
+<script>
+try {
+  window.GleanBridge.postMessage({ actionId:'export-pdf', type:'glean-add-menu', metadata:{label:'Export as PDF',icon:'export'} });
+  window.GleanBridge.onMessage('action', d=>{ if(d.actionId==='export-pdf') window.print(); });
+} catch(e){}
+</script>
+
+<!-- SCHEDULE MODAL -->
+<div id="sched-modal" onclick="if(event.target===this)closeSchedModal()">
+  <div id="sched-box">
+    <div style="font-size:15px;font-weight:700;margin-bottom:14px">&#9201; Edit Schedule</div>
+    <input type="hidden" id="sched-emp-id"/>
+    <div class="sched-row"><label>Expected Start</label><input type="time" id="sched-start" value="09:00"/></div>
+    <div class="sched-row"><label>Expected End</label><input type="time" id="sched-end" value="17:00"/></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="closeSchedModal()" style="padding:8px 13px;border-radius:8px;border:1px solid var(--artifact-border-light);background:transparent;color:var(--artifact-text-secondary);font-size:13px;cursor:pointer">Cancel</button>
+      <button onclick="saveSchedModal()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--artifact-primary-brand);color:#fff;font-size:13px;font-weight:600;cursor:pointer">&#10003; Save</button>
+    </div>
+  </div>
+</div>
+<!-- QR MODAL -->
+<div id="qr-modal" onclick="if(event.target===this)closeQuickReg()">
+  <div id="qr-box">
+    <div class="qr-t">&#128100; Register New Person</div>
+    <div class="qr-s">Unrecognised face &#8212; enter a name to register instantly</div>
+    <img id="qr-img" class="qr-img" src="" alt="" style="display:none"/>
+    <input id="qr-name" type="text" placeholder="Full name&#8230;" autocomplete="off" onkeydown="if(event.key==='Enter')saveQuickReg()"/>
+    <div class="qr-acts">
+      <button class="qr-secondary" onclick="closeQuickReg()">Cancel</button>
+      <button class="qr-primary" onclick="saveQuickReg()">&#10003; Register</button>
+    </div>
+    <div class="qr-status" id="qr-status"></div>
+  </div>
+</div>
+</body>
+</html>
