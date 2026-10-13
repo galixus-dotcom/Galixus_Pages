@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSVP Speed Reader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"JetBrains Mono"', 'monospace'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            focusRed: '#ff3b30',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Styling for the RSVP Display area to ensure crisp visual alignment */
+    .rsvp-container {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      user-select: none;
+    }
+    
+    .rsvp-left {
+      text-align: right;
+      color: #e5e7eb;
+    }
+
+    .rsvp-center {
+      text-align: center;
+      color: #ff3b30;
+      font-weight: 700;
+      min-width: 0.6em; /* Keeps dynamic space standard */
+    }
+
+    .rsvp-right {
+      text-align: left;
+      color: #e5e7eb;
+    }
+
+    /* Custom scrollbar styling for text input drawer */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+  </style>
+</head>
+<body class="bg-black text-gray-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+  <!-- Top Navigation Header -->
+  <header class="w-full border-b border-gray-800 bg-gray-950/80 backdrop-blur-md px-6 py-4 flex justify-between items-center z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-mono font-bold text-white shadow-lg shadow-red-900/40">
+        R
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white leading-none">FocusRead</h1>
+        <p class="text-xs text-gray-400 mt-0.5">RSVP Speed Reader</p>
+      </div>
+    </div>
+
+    <!-- Right Header Actions -->
+    <div class="flex items-center space-x-3">
+      <button id="toggleTextModalBtn" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-lg transition border border-gray-700 flex items-center space-x-2 shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+        <span>Edit / Load Text</span>
+      </button>
+      <label for="fileUploadInput" class="cursor-pointer px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition flex items-center space-x-2 shadow-md shadow-red-900/20">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+        <span>Upload .txt</span>
+      </label>
+      <input type="file" id="fileUploadInput" accept=".txt" class="hidden" />
+    </div>
+  </header>
+
+  <!-- Central RSVP Speed Reader Screen -->
+  <main class="flex-1 flex flex-col justify-center items-center relative px-4 my-auto">
+    <!-- Visual Alignment Guide Lines -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-48 pointer-events-none flex flex-col justify-between items-center opacity-30">
+      <div class="w-full border-t border-dashed border-gray-700"></div>
+      <!-- Center vertical indicator lines -->
+      <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 flex flex-col justify-between py-2">
+        <div class="w-0.5 h-3 bg-red-500"></div>
+        <div class="w-0.5 h-3 bg-red-500"></div>
+      </div>
+      <div class="w-full border-b border-dashed border-gray-700"></div>
+    </div>
+
+    <!-- RSVP Word Render Target -->
+    <div class="w-full max-w-4xl py-12 flex justify-center items-center">
+      <div id="rsvpDisplay" class="rsvp-container font-mono text-5xl sm:text-7xl md:text-8xl tracking-tight leading-none w-full">
+        <span class="rsvp-left" id="partLeft">Ready</span>
+        <span class="rsvp-center" id="partCenter">?</span>
+        <span class="rsvp-right" id="partRight"></span>
+      </div>
+    </div>
+
+    <!-- Word counter HUD -->
+    <div class="mt-6 flex items-center space-x-2 bg-gray-900/60 border border-gray-800 px-4 py-1.5 rounded-full text-xs font-mono text-gray-400">
+      <span id="currentWordIndex">0</span>
+      <span>/</span>
+      <span id="totalWordsCount">0</span>
+      <span class="text-gray-600">|</span>
+      <span id="progressPercentage">0%</span>
+    </div>
+  </main>
+
+  <!-- Bottom Control Deck -->
+  <footer class="w-full bg-gray-950 border-t border-gray-800 p-6 z-20 space-y-6">
+    <div class="max-w-4xl mx-auto space-y-5">
+      
+      <!-- Progress Bar Scrubbing Track -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-center text-xs text-gray-400 font-mono">
+          <span>Reading Progress</span>
+          <span id="timeRemainingDisplay">--:-- remaining</span>
+        </div>
+        <input 
+          type="range" 
+          id="scrubber" 
+          min="0" 
+          max="100" 
+          value="0" 
+          step="1" 
+          class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+        >
+      </div>
+
+      <!-- Controls & WPM Adjustment Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        
+        <!-- Left: Playback Control Buttons -->
+        <div class="flex items-center justify-center md:justify-start space-x-2">
+          <!-- Step Back 10 Words -->
+          <button id="stepBackBtn" title="Step Back 10 Words (Left Arrow)" class="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-xl transition border border-gray-800 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"></path></svg>
+          </button>
+
+          <!-- Play / Pause Main Button -->
+          <button id="playPauseBtn" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition flex items-center space-x-2 shadow-lg shadow-red-900/30 active:scale-95 min-w-[120px] justify-center">
+            <svg id="playIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+            <svg id="pauseIcon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5 0a1 1 0 012 0v4a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg>
+            <span id="playPauseText">Play</span>
+          </button>
+
+          <!-- Reset Button -->
+          <button id="resetBtn" title="Restart (Key: R)" class="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-xl transition border border-gray-800 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          </button>
+
+          <!-- Step Forward 10 Words -->
+          <button id="stepForwardBtn" title="Step Forward 10 Words (Right Arrow)" class="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-xl transition border border-gray-800 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"></path></svg>
+          </button>
+        </div>
+
+        <!-- Center: WPM Speed Control Slider -->
+        <div class="space-y-1.5 flex flex-col justify-center">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-gray-400 font-medium">Speed Control</span>
+            <span class="font-mono text-red-500 font-bold text-sm"><span id="wpmValueDisplay">350</span> WPM</span>
+          </div>
+          <input 
+            type="range" 
+            id="wpmSlider" 
+            min="100" 
+            max="900" 
+            step="25" 
+            value="350" 
+            class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          >
+        </div>
+
+        <!-- Right: WPM Preset Quick Buttons -->
+        <div class="flex items-center justify-center md:justify-end space-x-2">
+          <span class="text-xs text-gray-500 hidden lg:inline">Presets:</span>
+          <button class="preset-btn px-2.5 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-mono rounded-lg text-gray-300 transition" data-wpm="250">250</button>
+          <button class="preset-btn px-2.5 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-mono rounded-lg text-gray-300 transition" data-wpm="450">450</button>
+          <button class="preset-btn px-2.5 py-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-xs font-mono rounded-lg text-gray-300 transition" data-wpm="700">700</button>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- Text Input Drawer Modal -->
+  <div id="textModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-5 border-b border-gray-800 flex justify-between items-center">
+        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span>Input Custom Text</span>
+        </h2>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="p-5 flex-1 overflow-y-auto space-y-4">
+        <textarea 
+          id="textInput" 
+          rows="10" 
+          class="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-gray-200 text-sm font-mono focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 resize-y"
+          placeholder="Paste or type text here to begin speed reading..."
+        ></textarea>
+        <div class="flex justify-between items-center text-xs text-gray-500">
+          <span>Keyboard Shortcuts: [Space] Play/Pause, [R] Reset, [Left/Right] Step Words</span>
+          <button id="clearTextBtn" class="text-gray-400 hover:text-red-400 transition underline">Clear Text</button>
+        </div>
+      </div>
+
+      <div class="p-5 border-t border-gray-800 bg-gray-950 flex justify-end space-x-3">
+        <button id="cancelModalBtn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-xl transition">Cancel</button>
+        <button id="loadTextBtn" class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition shadow-lg shadow-red-900/30">Load Text into Reader</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initial Default Demo Text
+    const DEFAULT_TEXT = `Rapid Serial Visual Presentation (RSVP) is a reading technique where words are displayed one by one in a fixed position on the screen. By eliminating the physical movement of your eyes from word to word across lines, RSVP allows your brain to process visual text much faster than traditional reading.
+
+The central focal point—often a mid-vowel or optimal recognition point—is highlighted in bold red. Keeping your eyes fixated on this single red focal letter minimizes eye fatigue and maximizes reading speed.
+
+You can easily adjust the speed from 100 to 900 words per minute using the controls below. Press spacebar at any time to pause or play, and use arrow keys to step through sentences!`;
+
+    // Application State Variables
+    let words = [];
+    let currentIndex = 0;
+    let wpm = 350;
+    let isPlaying = false;
+    let timerId = null;
+
+    // DOM Elements
+    const partLeft = document.getElementById('partLeft');
+    const partCenter = document.getElementById('partCenter');
+    const partRight = document.getElementById('partRight');
+    const currentWordIndexEl = document.getElementById('currentWordIndex');
+    const totalWordsCountEl = document.getElementById('totalWordsCount');
+    const progressPercentageEl = document.getElementById('progressPercentage');
+    const timeRemainingDisplay = document.getElementById('timeRemainingDisplay');
+    
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const playPauseText = document.getElementById('playPauseText');
+    const resetBtn = document.getElementById('resetBtn');
+    const stepBackBtn = document.getElementById('stepBackBtn');
+    const stepForwardBtn = document.getElementById('stepForwardBtn');
+    
+    const wpmSlider = document.getElementById('wpmSlider');
+    const wpmValueDisplay = document.getElementById('wpmValueDisplay');
+    const scrubber = document.getElementById('scrubber');
+    const presetBtns = document.querySelectorAll('.preset-btn');
+    
+    const textModal = document.getElementById('textModal');
+    const toggleTextModalBtn = document.getElementById('toggleTextModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const loadTextBtn = document.getElementById('loadTextBtn');
+    const clearTextBtn = document.getElementById('clearTextBtn');
+    const textInput = document.getElementById('textInput');
+    const fileUploadInput = document.getElementById('fileUploadInput');
+
+    /**
+     * Calculates the Optimal Recognition Point (ORP) or mid-vowel index for a given word.
+     * Rules prioritize mid vowels when available, defaulting to standard visual focal points.
+     */
+    function getORPIndex(word) {
+      const len = word.length;
+      if (len <= 1) return 0;
+      
+      const vowels = ['a', 'e', 'i', 'o', 'u', 'y', 'A', 'E', 'I', 'O', 'U', 'Y'];
+      
+      // Calculate standard visual focal center offset (slightly to left of exact center)
+      let defaultOrp = 0;
+      if (len === 2 || len === 3) defaultOrp = 1;
+      else if (len >= 4 && len <= 7) defaultOrp = Math.floor(len / 3);
+      else if (len >= 8 && len <= 10) defaultOrp = 2;
+      else defaultOrp = 3;
+
+      // Find all vowel indices in the word
+      const vowelIndices = [];
+      for (let i = 0; i < len; i++) {
+        if (vowels.includes(word[i])) {
+          vowelIndices.push(i);
+        }
+      }
+
+      // If vowels exist, pick the vowel closest to the standard visual center
+      if (vowelIndices.length > 0) {
+        let closestVowel = vowelIndices[0];
+        let minDiff = Math.abs(closestVowel - defaultOrp);
+        
+        for (let i = 1; i < vowelIndices.length; i++) {
+          const diff = Math.abs(vowelIndices[i] - defaultOrp);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestVowel = vowelIndices[i];
+          }
+        }
+        return closestVowel;
+      }
+
+      // Fallback to visual center if no vowels exist
+      return defaultOrp;
+    }
+
+    /**
+     * Parses full text string into clean word tokens
+     */
+    function parseText(rawText) {
+      if (!rawText || !rawText.trim()) return ['No', 'Text', 'Loaded'];
+      return rawText.trim().split(/\s+/);
+    }
+
+    /**
+     * Renders the current word split into 3 spans (Left, Focal Character, Right)
+     */
+    function renderWord() {
+      if (words.length === 0) return;
+
+      const currentWord = words[currentIndex] || "";
+      const orpIndex = getORPIndex(currentWord);
+
+      const leftStr = currentWord.substring(0, orpIndex);
+      const centerStr = currentWord.charAt(orpIndex);
+      const rightStr = currentWord.substring(orpIndex + 1);
+
+      partLeft.textContent = leftStr;
+      partCenter.textContent = centerStr;
+      partRight.textContent = rightStr;
+
+      // Update counters and progress bar
+      currentWordIndexEl.textContent = currentIndex + 1;
+      totalWordsCountEl.textContent = words.length;
+      
+      const pct = words.length > 0 ? Math.round(((currentIndex + 1) / words.length) * 100) : 0;
+      progressPercentageEl.textContent = `${pct}%`;
+      scrubber.value = currentIndex;
+
+      // Calculate remaining time
+      const wordsLeft = words.length - (currentIndex + 1);
+      const secondsLeft = Math.ceil((wordsLeft / wpm) * 60);
+      const mins = Math.floor(secondsLeft / 60);
+      const secs = secondsLeft % 60;
+      timeRemainingDisplay.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs} remaining`;
+    }
+
+    /**
+     * Determines delay multiplier for punctuation to smooth reading rhythm
+     */
+    function getWordPauseDelay(word) {
+      const baseDelay = (60 / wpm) * 1000;
+      if (!word) return baseDelay;
+
+      // Add natural pause for end of sentence or punctuation
+      const lastChar = word.slice(-1);
+      if (['.', '!', '?'].includes(lastChar)) {
+        return baseDelay * 2.2;
+      } else if ([',', ';', ':', '-'].includes(lastChar)) {
+        return baseDelay * 1.5;
+      }
+      return baseDelay;
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+
+      if (currentIndex >= words.length - 1) {
+        pause();
+        return;
+      }
+
+      currentIndex++;
+      renderWord();
+
+      const delay = getWordPauseDelay(words[currentIndex]);
+      timerId = setTimeout(tick, delay);
+    }
+
+    function play() {
+      if (words.length === 0) return;
+      if (currentIndex >= words.length - 1) {
+        currentIndex = 0; // Restart if at end
+      }
+      isPlaying = true;
+      playPauseText.textContent = "Pause";
+      playIcon.classList.add("hidden");
+      pauseIcon.classList.remove("hidden");
+      
+      const delay = getWordPauseDelay(words[currentIndex]);
+      timerId = setTimeout(tick, delay);
+    }
+
+    function pause() {
+      isPlaying = false;
+      playPauseText.textContent = "Play";
+      playIcon.classList.remove("hidden");
+      pauseIcon.classList.add("hidden");
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+    }
+
+    function togglePlayPause() {
+      if (isPlaying) pause();
+      else play();
+    }
+
+    function reset() {
+      pause();
+      currentIndex = 0;
+      renderWord();
+    }
+
+    function setWpm(newWpm) {
+      wpm = parseInt(newWpm, 10);
+      wpmSlider.value = wpm;
+      wpmValueDisplay.textContent = wpm;
+    }
+
+    function loadText(rawText) {
+      pause();
+      words = parseText(rawText);
+      currentIndex = 0;
+      scrubber.max = words.length > 0 ? words.length - 1 : 0;
+      renderWord();
+    }
+
+    function openModal() {
+      pause();
+      textModal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeModal() {
+      textModal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    // Handle File Uploads (.txt files)
+    fileUploadInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target.result;
+        textInput.value = text;
+        loadText(text);
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // Reset input selection
+    });
+
+    // Control Button Listeners
+    playPauseBtn.addEventListener('click', togglePlayPause);
+    resetBtn.addEventListener('click', reset);
+    
+    stepBackBtn.addEventListener('click', () => {
+      pause();
+      currentIndex = Math.max(0, currentIndex - 10);
+      renderWord();
+    });
+
+    stepForwardBtn.addEventListener('click', () => {
+      pause();
+      currentIndex = Math.min(words.length - 1, currentIndex + 10);
+      renderWord();
+    });
+
+    // Slider Listeners
+    wpmSlider.addEventListener('input', (e) => {
+      setWpm(e.target.value);
+    });
+
+    scrubber.addEventListener('input', (e) => {
+      pause();
+      currentIndex = parseInt(e.target.value, 10);
+      renderWord();
+    });
+
+    // Preset Buttons
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        setWpm(btn.dataset.wpm);
+      });
+    });
+
+    // Modal Control Listeners
+    toggleTextModalBtn.addEventListener('click', openModal);
+    closeModalBtn.addEventListener('click', closeModal);
+    cancelModalBtn.addEventListener('click', closeModal);
+    
+    loadTextBtn.addEventListener('click', () => {
+      const inputVal = textInput.value;
+      if (inputVal.trim()) {
+        loadText(inputVal);
+        closeModal();
+      }
+    });
+
+    clearTextBtn.addEventListener('click', () => {
+      textInput.value = '';
+    });
+
+    // Global Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Don't trigger shortcuts if user is typing inside modal text area
+      if (document.activeElement === textInput) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        reset();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        pause();
+        currentIndex = Math.max(0, currentIndex - (e.shiftKey ? 10 : 1));
+        renderWord();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        pause();
+        currentIndex = Math.min(words.length - 1, currentIndex + (e.shiftKey ? 10 : 1));
+        renderWord();
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        setWpm(Math.min(900, wpm + 25));
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        setWpm(Math.max(100, wpm - 25));
+      }
+    });
+
+    // Initialize Reader on page load
+    window.onload = function() {
+      textInput.value = DEFAULT_TEXT;
+      loadText(DEFAULT_TEXT);
+    };
+  </script>
+</body>
+</html>
