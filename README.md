@@ -144,6 +144,198 @@ Privacy
 
 Testimonies are stored locally in the browser and are only exported when the user chooses Save to file. This project does not include a backend or external data service.
 
+__________________________________________________________________-
+
+Photo Gallery
+
+A self-contained, browser-based photo gallery for organizing images into date-based sections.
+
+The gallery runs entirely in the browser and does not require a backend, build process, or installation.
+
+Features
+
+
+
+
+
+Upload multiple images by clicking the upload area or dragging files onto it.
+
+
+
+Automatically read year and month from JPEG EXIF metadata.
+
+
+
+Group images by year or by year and month.
+
+
+
+Sort sections from oldest to newest or newest to oldest.
+
+
+
+Rename section titles, for example changing 2024 to Summer Holiday.
+
+
+
+Manually assign or change an image's year and month.
+
+
+
+Drag images between date sections.
+
+
+
+Automatically ignore unsupported formats and duplicate inputs.
+
+
+
+Open images in a fullscreen viewer with previous/next navigation.
+
+
+
+Switch between light and dark mode.
+
+
+
+Save a standalone HTML gallery with images embedded directly in the file.
+
+
+
+Resize exported images proportionally to a maximum of 600 × 800 pixels.
+
+Supported formats
+
+
+
+
+
+JPG
+
+
+
+JPEG
+
+
+
+PNG
+
+
+
+GIF
+
+
+
+WEBP
+
+Unsupported files are ignored automatically.
+
+Getting started
+
+
+
+
+
+Place image_gallery.html in your project directory.
+
+
+
+Open image_gallery.html in a modern web browser.
+
+
+
+Upload your images.
+
+
+
+Use the grouping, sorting, editing, and theme controls as needed.
+
+No server or package installation is required.
+
+EXIF dates
+
+For JPEG images, the gallery checks EXIF date fields in this order:
+
+
+
+
+
+DateTimeOriginal
+
+
+
+DateTimeDigitized
+
+
+
+DateTime
+
+If no usable EXIF date is found, the image is placed in the No EXIF Date section. Its year or month can be assigned manually.
+
+Duplicate detection
+
+Duplicate uploads are ignored using the file name, file size, and last-modified timestamp. This applies both when selecting multiple files at once and when uploading files later.
+
+Saving a standalone gallery
+
+Click Save as HTML to download a self-contained gallery snapshot.
+
+The exported file:
+
+
+
+
+
+Embeds images as JPEG data.
+
+
+
+Resizes images proportionally to a maximum of 600 × 800 pixels.
+
+
+
+Preserves date sections, custom section titles, grouping mode, and theme.
+
+
+
+Includes fullscreen viewing and previous/next navigation.
+
+
+
+Can be opened offline in a browser.
+
+GitHub Pages
+
+To publish the gallery with GitHub Pages:
+
+
+
+
+
+Create a GitHub repository.
+
+
+
+Add image_gallery.html and this README.md file.
+
+
+
+Enable GitHub Pages from the repository's Settings tab.
+
+
+
+Open the generated Pages URL.
+
+For the default GitHub Pages entry point, rename image_gallery.html to index.html.
+
+Privacy
+
+Images are processed locally in the browser. They are not uploaded to a server by the gallery.
+
+License
+
+Add the license appropriate for your project, for example MIT, Apache-2.0, or a proprietary license.
+
 License
 
 No license is included yet. Add a license file before distributing the project publicly.
