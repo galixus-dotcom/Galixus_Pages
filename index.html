@@ -26,6 +26,7 @@
       --artifact-bubble-lilac: #eeeafa;
       --artifact-bubble-peach: #f8ece4;
       --artifact-bubble-yellow: #f7f1d9;
+      --artifact-bubble-green: #e7f1e5;
       --artifact-shadow: 0 16px 35px rgba(31, 43, 78, 0.10);
       --artifact-shadow-hover: 0 22px 44px rgba(31, 43, 78, 0.16);
     }
@@ -49,6 +50,7 @@
       --artifact-bubble-lilac: #29233c;
       --artifact-bubble-peach: #38251d;
       --artifact-bubble-yellow: #39331b;
+      --artifact-bubble-green: #1c3020;
       --artifact-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
       --artifact-shadow-hover: 0 24px 48px rgba(0, 0, 0, 0.38);
     }
@@ -225,8 +227,10 @@
       min-height: 188px;
       display: flex;
       flex-direction: column;
+      align-items: center;
       justify-content: space-between;
       padding: 22px;
+      text-align: center;
       border: 1px solid var(--artifact-border-light);
       border-radius: 50%;
       color: var(--artifact-text-primary);
@@ -242,15 +246,18 @@
       outline: none;
     }
     .bubble:focus-visible { box-shadow: 0 0 0 4px var(--artifact-selected), var(--artifact-shadow-hover); }
-    .bubble-blue { left: calc(50% - 94px); top: 6px; background: var(--artifact-bubble-blue); }
-    .bubble-teal { right: 3px; top: 174px; background: var(--artifact-bubble-teal); }
-    .bubble-lilac { right: 76px; bottom: 8px; background: var(--artifact-bubble-lilac); }
-    .bubble-peach { left: 76px; bottom: 8px; background: var(--artifact-bubble-peach); }
-    .bubble-yellow { left: 3px; top: 174px; background: var(--artifact-bubble-yellow); }
+    .bubble-blue { left: calc(50% - 94px); top: 0; background: var(--artifact-bubble-blue); }
+    .bubble-teal { left: calc(50% + 105px); top: 90px; background: var(--artifact-bubble-teal); }
+    .bubble-lilac { left: calc(50% + 105px); bottom: 90px; background: var(--artifact-bubble-lilac); }
+    .bubble-peach { left: calc(50% - 293px); bottom: 90px; background: var(--artifact-bubble-peach); }
+    .bubble-yellow { left: calc(50% - 293px); top: 90px; background: var(--artifact-bubble-yellow); }
+    .bubble-image-forge { left: calc(50% - 94px); bottom: 0; background: var(--artifact-bubble-green); }
     .bubble-topline {
+      position: relative;
+      width: 100%;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 12px;
       color: var(--artifact-text-secondary);
       font-family: "SF Mono", "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
@@ -270,6 +277,8 @@
     }
     .file-icon svg { width: 16px; height: 16px; }
     .arrow {
+      position: absolute;
+      right: 0;
       font-family: Georgia, serif;
       font-size: 22px;
       line-height: 1;
@@ -279,6 +288,7 @@
     .bubble h2 {
       margin: auto 0 4px;
       max-width: 145px;
+      text-align: center;
       color: var(--artifact-text-primary);
       font-size: 17px;
       font-weight: 620;
@@ -326,7 +336,7 @@
         gap: 14px;
       }
       .orbit-ring, .orbit-lines, .hub-core { display: none; }
-      .bubble, .bubble-blue, .bubble-teal, .bubble-lilac, .bubble-peach, .bubble-yellow {
+      .bubble, .bubble-blue, .bubble-teal, .bubble-lilac, .bubble-peach, .bubble-yellow, .bubble-image-forge {
         position: relative;
         inset: auto;
         width: 100%;
@@ -341,7 +351,7 @@
       .collection-count { align-self: flex-start; }
       .orbit-stage { grid-template-columns: 1fr; }
       .bubble-blue { grid-column: auto; }
-      .bubble, .bubble-blue, .bubble-teal, .bubble-lilac, .bubble-peach, .bubble-yellow { min-height: 160px; }
+      .bubble, .bubble-blue, .bubble-teal, .bubble-lilac, .bubble-peach, .bubble-yellow, .bubble-image-forge { min-height: 160px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
@@ -370,23 +380,24 @@
         </span>
         <span>Creative Web Lab</span>
       </a>
-      <span class="collection-count">01 / 05 destinations</span>
+      <span class="collection-count">01 / 06 destinations</span>
     </header>
 
     <section class="intro" data-glean-id="intro">
       <div class="eyebrow">A small collection of experiments</div>
       <h1>Choose your next<br>web experience.</h1>
-      <p class="intro-copy">Five standalone pages, gathered in one playful launchpad. Select a bubble to open the experience.</p>
+      <p class="intro-copy">Six standalone pages, gathered in one playful launchpad. Select a bubble to open the experience.</p>
     </section>
 
     <section class="orbit-stage" data-glean-id="page-navigation" aria-label="Web page navigation">
       <div class="orbit-ring" aria-hidden="true"></div>
       <svg class="orbit-lines" viewBox="0 0 900 640" preserveAspectRatio="none" aria-hidden="true">
-        <line x1="450" y1="320" x2="450" y2="100"></line>
-        <line x1="450" y1="320" x2="790" y2="260"></line>
-        <line x1="450" y1="320" x2="700" y2="540"></line>
-        <line x1="450" y1="320" x2="200" y2="540"></line>
-        <line x1="450" y1="320" x2="110" y2="260"></line>
+        <line x1="450" y1="320" x2="450" y2="94"></line>
+        <line x1="450" y1="320" x2="649" y2="184"></line>
+        <line x1="450" y1="320" x2="649" y2="456"></line>
+        <line x1="450" y1="320" x2="450" y2="546"></line>
+        <line x1="450" y1="320" x2="251" y2="456"></line>
+        <line x1="450" y1="320" x2="251" y2="184"></line>
       </svg>
 
       <div class="hub-core" data-glean-id="hub-core">
@@ -429,6 +440,13 @@
         <div class="file-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h6v6H5zM13 5h6v6h-6zM9 13h6v6H9z"/></svg></div>
         <h2>Tetris</h2>
         <div class="filename">tetris.html</div>
+      </a>
+
+      <a class="bubble bubble-image-forge" href="image_forge.html" data-glean-id="link-image-forge" aria-label="Open Image Forge">
+        <div class="bubble-topline"><span>06</span><span class="arrow" aria-hidden="true">↗</span></div>
+        <div class="file-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="4"/></svg></div>
+        <h2>Image Forge</h2>
+        <div class="filename">image_forge.html</div>
       </a>
     </section>
 
