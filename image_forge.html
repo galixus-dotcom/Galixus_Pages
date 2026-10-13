@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Image Forge — format & resolution converter</title>
+  <style>
+    :root {
+      --artifact-background: #ffffff;
+      --artifact-background-light: #f1f3f6;
+      --artifact-background-mid: #e9ecf1;
+      --artifact-border-light: #e3e6ec;
+      --artifact-border-dark: #cdd2db;
+      --artifact-primary-brand: #3559e6;
+      --artifact-primary-highlight: #0d0f14;
+      --artifact-primary-hover: #2442b8;
+      --artifact-selected: #eaeefc;
+      --artifact-text-primary: #11141a;
+      --artifact-text-secondary: #5c6470;
+      --artifact-text-highlight: #e8eefc;
+      --artifact-positive-background: #e8f6ee;
+      --artifact-positive-text: #11141a;
+      --artifact-positive: #159a6a;
+      --artifact-negative: #dc4c4c;
+      --artifact-warning-background: #fff7e6;
+      --artifact-warning-text: #7d5700;
+      --artifact-shadow: 0 12px 28px rgba(17, 20, 26, .06);
+      --artifact-radius: 8px;
+    }
+    html[data-theme='dark'] {
+      --artifact-background: #0a0b0e;
+      --artifact-background-light: #121419;
+      --artifact-background-mid: #181b22;
+      --artifact-border-light: #23262e;
+      --artifact-border-dark: #343844;
+      --artifact-primary-brand: #6a92ff;
+      --artifact-primary-highlight: #f5f7fb;
+      --artifact-primary-hover: #88a8ff;
+      --artifact-selected: #1a2030;
+      --artifact-text-primary: #eef0f4;
+      --artifact-text-secondary: #9aa0ad;
+      --artifact-text-highlight: #14213d;
+      --artifact-positive-background: #0e2a1d;
+      --artifact-positive-text: #c8f5da;
+      --artifact-positive: #46d39a;
+      --artifact-negative: #ff6b6b;
+      --artifact-warning-background: #2a2111;
+      --artifact-warning-text: #f0c36a;
+      --artifact-shadow: 0 12px 28px rgba(0, 0, 0, .2);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--artifact-background);
+      color: var(--artifact-text-primary);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      letter-spacing: -.005em;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, .dropzone:focus-visible {
+      outline: 3px solid var(--artifact-text-highlight);
+      outline-offset: 2px;
+    }
+    .mono, .eyebrow, .label, th, .stat-number, .file-meta, .size-mono {
+      font-family: "SF Mono", "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+    }
+    .page-shell { max-width: 1440px; margin: 0 auto; padding: 34px 34px 58px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 25px; border-bottom: 1px solid var(--artifact-border-light); }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--artifact-border-dark); border-radius: 7px; color: var(--artifact-primary-brand); }
+    .brand-mark svg { width: 18px; height: 18px; }
+    .brand-name { font-size: 14px; font-weight: 650; letter-spacing: .02em; }
+    .eyebrow, .label, th { color: var(--artifact-text-secondary); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+    .top-actions { display: flex; align-items: center; gap: 14px; }
+    .local-note { display: flex; align-items: center; gap: 7px; color: var(--artifact-text-secondary); font-size: 12px; }
+    .local-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--artifact-positive); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 42px; padding: 56px 0 40px; align-items: end; }
+    h1, h2, h3 { margin: 0; font-weight: 400; letter-spacing: -.04em; line-height: 1.04; }
+    h1 { max-width: 760px; font-size: clamp(2.6rem, 6vw, 5.5rem); font-weight: 300; }
+    .hero-copy { max-width: 465px; color: var(--artifact-text-secondary); font-size: 15px; line-height: 1.65; justify-self: end; }
+    .hero-copy strong { color: var(--artifact-text-primary); font-weight: 550; }
+    .workspace { border: 1px solid var(--artifact-border-light); border-radius: var(--artifact-radius); background: var(--artifact-background-light); box-shadow: var(--artifact-shadow); overflow: hidden; }
+    .workspace-head { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 22px; border-bottom: 1px solid var(--artifact-border-light); background: var(--artifact-background); }
+    .workspace-title { display: flex; align-items: baseline; gap: 12px; }
+    .workspace-title h2 { font-size: 17px; font-weight: 550; letter-spacing: -.015em; }
+    .workspace-title span { color: var(--artifact-text-secondary); font-size: 12px; }
+    .workspace-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .button { border: 1px solid var(--artifact-border-dark); border-radius: 6px; padding: 9px 13px; background: var(--artifact-background); color: var(--artifact-text-primary); font-size: 13px; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+    .button:hover { border-color: var(--artifact-primary-brand); color: var(--artifact-primary-brand); }
+    .button.primary { border-color: var(--artifact-primary-brand); background: var(--artifact-primary-brand); color: var(--artifact-background); }
+    .button.primary:hover { border-color: var(--artifact-primary-hover); background: var(--artifact-primary-hover); color: var(--artifact-background); }
+    .button.ghost { background: transparent; }
+    .button:disabled { opacity: .5; cursor: not-allowed; }
+    .download-wrap { position: relative; }
+    .download-actions { display: flex; }
+    .download-actions .primary { border-radius: 6px 0 0 6px; }
+    .download-more { min-width: 35px; padding: 8px 9px; border: 1px solid var(--artifact-primary-brand); border-left-color: var(--artifact-primary-hover); border-radius: 0 6px 6px 0; background: var(--artifact-primary-brand); color: var(--artifact-background); font-size: 15px; line-height: 1; }
+    .download-more:hover { border-color: var(--artifact-primary-hover); background: var(--artifact-primary-hover); }
+    .download-menu { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 250px; padding: 8px; border: 1px solid var(--artifact-border-light); border-radius: 7px; background: var(--artifact-background); box-shadow: var(--artifact-shadow); }
+    .download-menu[hidden] { display: none; }
+    .download-option { display: block; width: 100%; padding: 10px; border: 0; border-radius: 5px; background: transparent; color: var(--artifact-text-primary); text-align: left; font-size: 13px; }
+    .download-option:hover { background: var(--artifact-selected); color: var(--artifact-primary-brand); }
+    .download-option strong { display: block; font-weight: 600; }
+    .download-option span { display: block; margin-top: 2px; color: var(--artifact-text-secondary); font-size: 11px; }
+    .download-menu-note { padding: 8px 10px 5px; color: var(--artifact-text-secondary); font-size: 10px; line-height: 1.4; }
+    .controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 1px; background: var(--artifact-border-light); border-bottom: 1px solid var(--artifact-border-light); }
+    .control-group { padding: 20px 22px; background: var(--artifact-background); }
+    .control-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .control-heading h3 { font-size: 13px; font-weight: 600; letter-spacing: 0; }
+    .control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .control-grid.three { grid-template-columns: 1fr 1fr 1.3fr; }
+    .field { min-width: 0; }
+    .field .label { display: block; margin-bottom: 7px; }
+    .input, .select { width: 100%; min-height: 38px; padding: 8px 10px; color: var(--artifact-text-primary); background: var(--artifact-background-light); border: 1px solid var(--artifact-border-light); border-radius: 5px; }
+    .input:focus, .select:focus { border-color: var(--artifact-primary-brand); outline: none; }
+    .range-row { display: flex; align-items: center; gap: 11px; }
+    input[type='range'] { width: 100%; accent-color: var(--artifact-primary-brand); }
+    .range-value { min-width: 42px; color: var(--artifact-text-primary); font-size: 12px; text-align: right; }
+    .control-help { margin: 12px 0 0; color: var(--artifact-text-secondary); font-size: 12px; }
+    .dropzone { position: relative; margin: 20px 22px; padding: 29px 24px; border: 1px dashed var(--artifact-border-dark); border-radius: 7px; background: var(--artifact-background-light); text-align: center; transition: border-color .15s ease, background .15s ease; }
+    .dropzone.dragover { border-color: var(--artifact-primary-brand); background: var(--artifact-selected); }
+    .dropzone svg { width: 24px; height: 24px; margin-bottom: 6px; color: var(--artifact-primary-brand); }
+    .dropzone h3 { margin-bottom: 5px; font-size: 16px; font-weight: 550; letter-spacing: -.02em; }
+    .dropzone p { margin: 0 0 14px; color: var(--artifact-text-secondary); font-size: 13px; }
+    .dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .dropzone-actions { position: relative; z-index: 2; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .drop-file-input { position: absolute !important; inset: 0; z-index: 1; width: 100% !important; height: 100% !important; opacity: .01 !important; cursor: copy; pointer-events: auto !important; }
+    .workspace-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 22px 16px; color: var(--artifact-text-secondary); font-size: 12px; }
+    .summary-count { color: var(--artifact-text-primary); font-weight: 600; }
+    .sort-select { border: 0; padding: 3px 0 3px 8px; color: var(--artifact-text-secondary); background: transparent; font-size: 12px; }
+    .conversion-grid { display: grid; grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr); gap: 14px; padding: 0 22px 24px; align-items: stretch; }
+    .file-panel { min-width: 0; border: 1px solid var(--artifact-border-light); border-radius: 7px; background: var(--artifact-background); overflow: hidden; }
+    .file-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px; border-bottom: 1px solid var(--artifact-border-light); }
+    .file-panel-title { display: flex; align-items: baseline; gap: 9px; }
+    .file-panel-title h3 { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+    .file-count { color: var(--artifact-text-secondary); font-size: 12px; }
+    .panel-action { border: 0; padding: 0; color: var(--artifact-primary-brand); background: transparent; font-size: 12px; }
+    .panel-action:hover { text-decoration: underline; }
+    .file-list { min-height: 320px; max-height: 540px; overflow: auto; }
+    .file-row { display: grid; grid-template-columns: 25px 48px minmax(0, 1fr) auto; gap: 11px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--artifact-border-light); }
+    .file-row:last-child { border-bottom: 0; }
+    .file-row.is-selected { background: var(--artifact-selected); }
+    .file-row.is-error { background: var(--artifact-warning-background); }
+    .file-check { width: 16px; height: 16px; accent-color: var(--artifact-primary-brand); }
+    .thumb { width: 48px; height: 40px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--artifact-border-light); border-radius: 4px; background: var(--artifact-background-light); color: var(--artifact-text-secondary); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb svg { width: 17px; height: 17px; }
+    .file-name { min-width: 0; }
+    .file-name-main { overflow: hidden; color: var(--artifact-text-primary); font-size: 13px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+    .file-meta { overflow: hidden; margin-top: 2px; color: var(--artifact-text-secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .file-metrics { text-align: right; }
+    .metric-main { color: var(--artifact-text-primary); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .metric-sub { margin-top: 2px; color: var(--artifact-text-secondary); font-size: 10px; white-space: nowrap; }
+    .empty-state { min-height: 320px; display: grid; place-items: center; padding: 26px; color: var(--artifact-text-secondary); text-align: center; font-size: 13px; }
+    .empty-state span { display: block; max-width: 230px; }
+    .flow-arrow { display: grid; place-items: center; align-self: center; width: 38px; height: 38px; border: 1px solid var(--artifact-border-light); border-radius: 50%; background: var(--artifact-background); color: var(--artifact-primary-brand); }
+    .flow-arrow svg { width: 17px; height: 17px; }
+    .target-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
+    .target-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; padding: 2px 6px; border-radius: 3px; background: var(--artifact-positive-background); color: var(--artifact-positive); font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+    .target-badge.pending { background: var(--artifact-background-light); color: var(--artifact-text-secondary); }
+    .target-badge.error { background: var(--artifact-warning-background); color: var(--artifact-warning-text); }
+    .total-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 22px; padding: 14px 16px; border-top: 1px solid var(--artifact-border-light); color: var(--artifact-text-secondary); font-size: 12px; }
+    .total-bar strong { color: var(--artifact-text-primary); font-size: 13px; font-weight: 600; }
+    .status-line { min-height: 22px; padding: 0 22px 16px; color: var(--artifact-text-secondary); font-size: 12px; }
+    .status-line[data-tone='success'] { color: var(--artifact-positive); }
+    .status-line[data-tone='error'] { color: var(--artifact-negative); }
+    .footer-note { display: flex; justify-content: space-between; gap: 20px; padding-top: 22px; color: var(--artifact-text-secondary); font-size: 12px; }
+    .footer-note span:last-child { text-align: right; }
+    @media (max-width: 980px) {
+      .page-shell { padding: 24px 20px 42px; }
+      .hero { grid-template-columns: 1fr; gap: 20px; padding: 42px 0 30px; }
+      .hero-copy { justify-self: start; }
+      .controls { grid-template-columns: 1fr; }
+      .conversion-grid { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    @media (max-width: 620px) {
+      .page-shell { padding-inline: 14px; }
+      .topline, .workspace-head, .workspace-summary, .footer-note { align-items: flex-start; flex-direction: column; }
+      .workspace-actions { justify-content: flex-start; }
+      .control-grid, .control-grid.three { grid-template-columns: 1fr; }
+      .dropzone { margin-inline: 14px; }
+      .conversion-grid { padding-inline: 14px; }
+      .workspace-summary, .total-bar, .status-line { padding-inline: 14px; }
+      .footer-note span:last-child { text-align: left; }
+      .file-row { grid-template-columns: 25px 42px minmax(0, 1fr); }
+      .file-metrics { grid-column: 3; text-align: left; }
+      .target-row { grid-template-columns: 42px minmax(0, 1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+    @media print {
+      body { margin: 0; padding: .4in .6in; background: var(--artifact-background); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .page-shell, .workspace, main { max-width: 100% !important; width: 100% !important; }
+      [style*='position:sticky'], .topline { position: static !important; }
+      section, .workspace, .file-panel { break-inside: avoid; box-shadow: none !important; }
+      .workspace-actions, .dropzone, .controls, .panel-action, .button, .sort-select, input[type='checkbox'] { display: none !important; }
+      .file-list { max-height: none !important; overflow: visible !important; }
+      .conversion-grid { grid-template-columns: 1fr 1fr; }
+      .flow-arrow { display: none; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell" data-glean-id="image-forge-page">
+    <header class="topline" data-glean-id="page-header">
+      <div class="brand" data-glean-id="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 17.5 9 12l3.5 3.5L16 12l4 5.5"/><path d="M6.5 8.5h.01M4 20h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1Z"/></svg>
+        </div>
+        <span class="brand-name">IMAGE FORGE</span>
+      </div>
+      <div class="top-actions"><div class="local-note"><span class="local-dot" aria-hidden="true"></span> Files stay in this browser</div><button class="button ghost" type="button" id="themeToggle" aria-pressed="false">Dark mode</button></div>
+    </header>
+
+    <main>
+      <section class="hero" data-glean-id="hero-section">
+        <div>
+          <div class="eyebrow" style="margin-bottom: 15px;">LOCAL IMAGE CONVERSION WORKSPACE</div>
+          <h1>Shape every image<br />for its next job.</h1>
+        </div>
+        <p class="hero-copy">Drop in a batch, inspect the originals, set one target format and resolution, then compare the projected output size before downloading. <strong>Nothing leaves this page.</strong></p>
+      </section>
+
+      <section class="workspace" data-glean-id="conversion-workspace">
+        <div class="workspace-head" data-glean-id="workspace-header">
+          <div class="workspace-title"><h2>Conversion workspace</h2><span id="workspaceState">Waiting for files</span></div>
+          <div class="workspace-actions">
+            <button class="button ghost" type="button" id="clearBtn">Clear all</button>
+            <div class="download-wrap"><div class="download-actions"><button class="button primary" type="button" id="downloadBtn" disabled>Download targets</button><button class="download-more" type="button" id="downloadMenuBtn" disabled aria-label="More download options" aria-expanded="false">⌄</button></div><div class="download-menu" id="downloadMenu" hidden role="menu"><button class="download-option" type="button" id="chooseFolderBtn" role="menuitem"><strong>Choose a folder</strong><span>Save the selected targets together</span></button><button class="download-option" type="button" id="individualDownloadBtn" role="menuitem"><strong>Download individually</strong><span>Use the browser download location</span></button><div class="download-menu-note">The main button uses your browser’s default Downloads folder. Folder selection is available in browsers that support local file access.</div></div></div>
+          </div>
+        </div>
+
+        <div class="controls" data-glean-id="controls-panel">
+          <div class="control-group" data-glean-id="filter-controls">
+            <div class="control-heading"><h3>Filter originals</h3><span class="eyebrow">VIEW</span></div>
+            <div class="control-grid">
+              <div class="field"><label class="label" for="typeFilter">File type</label><select class="select" id="typeFilter"><option value="all">All types</option></select></div>
+              <div class="field"><label class="label" for="sizeFilter">Disk size</label><select class="select" id="sizeFilter"><option value="all">Any size</option><option value="small">Under 100 KB</option><option value="medium">100 KB – 1 MB</option><option value="large">Over 1 MB</option></select></div>
+            </div>
+            <p class="control-help">Filters only change what is shown; selections stay intact.</p>
+          </div>
+          <div class="control-group" data-glean-id="target-controls">
+            <div class="control-heading"><h3>Define target</h3><span class="eyebrow">OUTPUT</span></div>
+            <div class="control-grid three">
+              <div class="field"><label class="label" for="formatSelect">Format</label><select class="select" id="formatSelect"><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option><option value="image/png">PNG</option><option value="image/avif">AVIF</option></select></div>
+              <div class="field"><label class="label" for="targetSizeSelect">Standard size</label><select class="select" id="targetSizeSelect"><option value="original">Original size</option><option value="3840x2160">4K UHD · 3840 × 2160</option><option value="2560x1440">QHD · 2560 × 1440</option><option value="1920x1080" selected>Full HD · 1920 × 1080</option><option value="1280x720">HD · 1280 × 720</option><option value="1080x1080">Square · 1080 × 1080</option><option value="1080x1350">Portrait · 1080 × 1350</option><option value="1080x1920">Story · 1080 × 1920</option><option value="1200x628">Open Graph · 1200 × 628</option></select></div>
+              <div class="field"><label class="label" for="qualityRange">Quality <span id="qualityLabel">82%</span></label><div class="range-row"><input id="qualityRange" type="range" min="10" max="100" value="82" /><span class="range-value mono" id="qualityValue">0.82</span></div></div>
+            </div>
+            <p class="control-help" id="resolutionHelp">Output is fitted inside the selected standard size while preserving each original aspect ratio.</p>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop image files or a folder here or browse">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>
+          <h3>Drop image files or a folder here</h3>
+          <p>Any image format your browser can decode, including images inside nested folders.</p>
+          <div class="dropzone-actions"><label class="button" for="fileInput" id="browseBtn">Browse files</label><button class="button ghost" type="button" id="browseFolderBtn">Browse folder</button></div>
+          <input id="fileInput" type="file" accept="image/*,.avif,.heic,.heif,.tif,.tiff" multiple />
+          <input id="dropFileInput" class="drop-file-input" type="file" accept="image/*,.avif,.heic,.heif,.tif,.tiff" multiple />
+          <input id="folderInput" type="file" webkitdirectory directory multiple />
+        </div>
+
+        <div class="workspace-summary" data-glean-id="workspace-summary">
+          <div><span class="summary-count" id="visibleCount">0 files</span> shown · <span id="selectedCount">0 selected</span></div>
+          <label>Sort <select class="sort-select" id="sortSelect"><option value="name">Name</option><option value="size-desc">Largest first</option><option value="size-asc">Smallest first</option><option value="resolution">Resolution</option></select></label>
+        </div>
+
+        <div class="conversion-grid" data-glean-id="conversion-panels">
+          <section class="file-panel" data-glean-id="originals-panel">
+            <div class="file-panel-head"><div class="file-panel-title"><h3>Original files</h3><span class="file-count" id="originalCount">0</span></div><button class="panel-action" type="button" id="selectVisibleBtn">Select shown</button></div>
+            <div class="file-list" id="originalList"><div class="empty-state"><span>Add files above to inspect type, resolution, and disk size.</span></div></div>
+          </section>
+
+          <div class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></div>
+
+          <section class="file-panel" data-glean-id="targets-panel">
+            <div class="file-panel-head"><div class="file-panel-title"><h3>Target files</h3><span class="file-count" id="targetCount">0</span></div><span class="eyebrow">PROJECTED</span></div>
+            <div class="file-list" id="targetList"><div class="empty-state"><span>Select one or more originals to preview target files here.</span></div></div>
+          </section>
+        </div>
+        <div class="total-bar" data-glean-id="total-size-bar"><span>Selected batch · original vs target</span><strong id="totalSize">—</strong></div>
+        <div class="status-line" id="statusLine" data-glean-id="status-line" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="footer-note" data-glean-id="page-footer"><span>Browser-local processing · no uploads · target size is calculated from an in-memory conversion.</span><span class="mono">v1.0 / READY</span></footer>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+      const state = { files: [], targets: new Map(), filterType: 'all', filterSize: 'all', sort: 'name', targetSize: '1920x1080', format: 'image/jpeg', quality: 0.82 };
+      const $ = (id) => document.getElementById(id);
+      const els = { dropzone: $('dropzone'), fileInput: $('fileInput'), dropFileInput: $('dropFileInput'), folderInput: $('folderInput'), browseBtn: $('browseBtn'), browseFolderBtn: $('browseFolderBtn'), clearBtn: $('clearBtn'), downloadBtn: $('downloadBtn'), downloadMenuBtn: $('downloadMenuBtn'), downloadMenu: $('downloadMenu'), chooseFolderBtn: $('chooseFolderBtn'), individualDownloadBtn: $('individualDownloadBtn'), themeToggle: $('themeToggle'), originalList: $('originalList'), targetList: $('targetList'), typeFilter: $('typeFilter'), sizeFilter: $('sizeFilter'), sortSelect: $('sortSelect'), formatSelect: $('formatSelect'), qualityRange: $('qualityRange'), targetSizeSelect: $('targetSizeSelect'), qualityLabel: $('qualityLabel'), qualityValue: $('qualityValue'), visibleCount: $('visibleCount'), selectedCount: $('selectedCount'), originalCount: $('originalCount'), targetCount: $('targetCount'), totalSize: $('totalSize'), statusLine: $('statusLine'), workspaceState: $('workspaceState'), resolutionHelp: $('resolutionHelp'), selectVisibleBtn: $('selectVisibleBtn') };
+      const supportedOutput = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+      const formatLabels = { 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WebP', 'image/avif': 'AVIF' };
+      const extLabels = { jpg: 'JPEG', jpeg: 'JPEG', png: 'PNG', webp: 'WebP', avif: 'AVIF', gif: 'GIF', bmp: 'BMP', tiff: 'TIFF', tif: 'TIFF', heic: 'HEIC', heif: 'HEIF', svg: 'SVG' };
+      function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
+      function getExt(name) { const bits = String(name).toLowerCase().split('.'); return bits.length > 1 ? bits.pop() : ''; }
+      function fileType(file) { const ext = getExt(file.name); return file.type || (extLabels[ext] ? extLabels[ext] : 'Unknown'); }
+      function formatBytes(bytes) { if (!bytes) return '0 B'; const units = ['B', 'KB', 'MB', 'GB']; const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1); const value = bytes / Math.pow(1024, index); return value.toFixed(index === 0 ? 0 : value < 10 ? 2 : 1) + ' ' + units[index]; }
+      function formatMB(bytes) { return (bytes / (1024 * 1024)).toFixed(bytes < 1024 * 1024 ? 2 : 1) + ' MB'; }
+      function formatKB(bytes) { return bytes == null ? '—' : (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + ' KB'; }
+      function formatResolution(file) { return file.width && file.height ? file.width + ' × ' + file.height : 'Resolution unavailable'; }
+      function uniqueId(file) { return [file.name, file.size, file.lastModified].join('::'); }
+      function setStatus(message, tone) { els.statusLine.textContent = message || ''; if (tone) els.statusLine.dataset.tone = tone; else delete els.statusLine.dataset.tone; }
+      function isSizeMatch(file) { if (state.filterSize === 'small') return file.size < 100 * 1024; if (state.filterSize === 'medium') return file.size >= 100 * 1024 && file.size <= 1024 * 1024; if (state.filterSize === 'large') return file.size > 1024 * 1024; return true; }
+      function visibleFiles() { return state.files.filter((file) => (state.filterType === 'all' || file.typeKey === state.filterType) && isSizeMatch(file)).sort((a, b) => { if (state.sort === 'size-desc') return b.size - a.size; if (state.sort === 'size-asc') return a.size - b.size; if (state.sort === 'resolution') return (b.width * b.height || 0) - (a.width * a.height || 0); return a.name.localeCompare(b.name); }); }
+      function selectedFiles() { return state.files.filter((file) => file.selected); }
+      function addTypeOptions() { const types = [...new Set(state.files.map((file) => file.typeKey))].sort(); const old = state.filterType; els.typeFilter.innerHTML = '<option value="all">All types</option>' + types.map((type) => '<option value="' + escapeHtml(type) + '">' + escapeHtml(type) + '</option>').join(''); if (types.includes(old)) { els.typeFilter.value = old; } else { state.filterType = 'all'; els.typeFilter.value = 'all'; } }
+      function imageIcon() { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 18 9.5 12.5l4 4L16.5 13 20 18"/><path d="M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/><path d="M8.5 8.5h.01"/></svg>'; }
+      function originalRow(file) { const checked = file.selected ? ' checked' : ''; const rowClass = file.selected ? ' is-selected' : ''; const thumb = file.previewUrl ? '<img src="' + file.previewUrl + '" alt="" />' : imageIcon(); return '<div class="file-row' + rowClass + '" data-glean-id="original-' + escapeHtml(file.id) + '"><input class="file-check" type="checkbox" data-file-id="' + escapeHtml(file.id) + '"' + checked + ' aria-label="Select ' + escapeHtml(file.name) + '" /><div class="thumb">' + thumb + '</div><div class="file-name"><div class="file-name-main" title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</div><div class="file-meta">' + escapeHtml(file.typeLabel) + ' · ' + escapeHtml(formatResolution(file)) + '</div></div><div class="file-metrics"><div class="metric-main">' + formatMB(file.size) + '</div><div class="metric-sub">on disk</div></div></div>'; }
+      function targetRow(file) { const target = state.targets.get(file.id); const thumb = target && target.url ? '<img src="' + target.url + '" alt="" />' : imageIcon(); const statusClass = target && target.error ? ' error' : target && target.ready ? '' : ' pending'; const status = target && target.error ? target.error : target && target.ready ? 'READY' : 'CALCULATING'; const dims = target && target.width ? target.width + ' × ' + target.height : '—'; const rowClass = target && target.error ? ' is-error' : ''; return '<div class="file-row target-row' + rowClass + '" data-glean-id="target-' + escapeHtml(file.id) + '"><div class="thumb">' + thumb + '</div><div class="file-name"><div class="file-name-main" title="' + escapeHtml(file.name) + '">' + escapeHtml(file.baseName) + '<span class="mono">.' + escapeHtml(target ? target.ext : formatLabels[state.format].toLowerCase()) + '</span></div><div class="file-meta">' + escapeHtml(formatLabels[state.format]) + ' · ' + escapeHtml(dims) + '</div><span class="target-badge' + statusClass + '">' + escapeHtml(status) + '</span></div><div class="file-metrics"><div class="metric-main">' + (target && target.ready ? formatKB(target.bytes) : '—') + '</div><div class="metric-sub">target size</div></div></div>'; }
+      function render() { const visible = visibleFiles(); const selected = selectedFiles(); const targetFiles = selected; els.visibleCount.textContent = visible.length + (visible.length === 1 ? ' file' : ' files'); els.selectedCount.textContent = selected.length + ' selected'; els.originalCount.textContent = state.files.length; els.targetCount.textContent = targetFiles.length; els.originalList.innerHTML = visible.length ? visible.map(originalRow).join('') : '<div class="empty-state"><span>' + (state.files.length ? 'No files match the current filters.' : 'Add files above to inspect type, resolution, and disk size.') + '</span></div>'; els.targetList.innerHTML = targetFiles.length ? targetFiles.map(targetRow).join('') : '<div class="empty-state"><span>Select one or more originals to preview target files here.</span></div>'; els.clearBtn.disabled = state.files.length === 0; els.downloadBtn.disabled = ![...state.targets.values()].some((target) => target && target.ready); els.downloadMenuBtn.disabled = els.downloadBtn.disabled; els.workspaceState.textContent = state.files.length ? state.files.length + ' loaded · ' + selected.length + ' selected' : 'Waiting for files'; const originalTotal = selected.reduce((sum, file) => sum + file.size, 0); const targetTotal = [...state.targets.values()].filter((target) => target && target.ready).reduce((sum, target) => sum + target.bytes, 0); els.totalSize.textContent = selected.length ? formatBytes(originalTotal) + ' → ' + formatBytes(targetTotal) : '—'; bindRowEvents(); }
+      function bindRowEvents() { els.originalList.querySelectorAll('.file-check').forEach((checkbox) => checkbox.addEventListener('change', () => { const file = state.files.find((item) => item.id === checkbox.dataset.fileId); if (!file) return; file.selected = checkbox.checked; render(); refreshTargets(); })); }
+      function isHeic(file) { return /\.(heic|heif)$/i.test(file.name || '') || /image\/(heic|heif)/i.test(file.type || ''); }
+      async function decodeImage(raw) { if (window.createImageBitmap) { try { const bitmap = await createImageBitmap(raw); return { source: bitmap, width: bitmap.width, height: bitmap.height, cleanup: () => bitmap.close && bitmap.close() }; } catch (error) {} } if (window.ImageDecoder) { try { const type = raw.type || 'image/heic'; const decoder = new ImageDecoder({ data: await raw.arrayBuffer(), type }); const decoded = await decoder.decode(); const image = decoded.image; return { source: image, width: image.displayWidth || image.codedWidth, height: image.displayHeight || image.codedHeight, cleanup: () => { if (image.close) image.close(); if (decoder.close) decoder.close(); } }; } catch (error) {} } const url = URL.createObjectURL(raw); return await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve({ source: img, width: img.naturalWidth, height: img.naturalHeight, cleanup: () => URL.revokeObjectURL(url) }); img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decoder unavailable')); }; img.src = url; }); }
+      async function makePreviewUrl(decoded) { const maxWidth = 240; const scale = Math.min(1, maxWidth / decoded.width); const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(decoded.width * scale)); canvas.height = Math.max(1, Math.round(decoded.height * scale)); canvas.getContext('2d').drawImage(decoded.source, 0, 0, canvas.width, canvas.height); const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82)); return blob ? URL.createObjectURL(blob) : null; }
+      async function readDimensions(file) { try { const decoded = await decodeImage(file.raw); const previewUrl = await makePreviewUrl(decoded); const result = { width: decoded.width, height: decoded.height, previewUrl }; decoded.cleanup(); return result; } catch (error) { return { width: null, height: null, previewUrl: null }; } }
+      async function readDirectoryEntries(directory) { return new Promise((resolve, reject) => { if (!directory || !directory.createReader) { resolve([]); return; } const reader = directory.createReader(); const entries = []; const readBatch = () => reader.readEntries((batch) => { if (!batch.length) { resolve(entries); return; } entries.push(...batch); readBatch(); }, reject); readBatch(); }); }
+      async function collectDroppedEntry(entry, files) { if (!entry) return; if (entry.isFile) { await new Promise((resolve) => entry.file((file) => { if (file) files.push(file); resolve(); }, resolve)); return; } if (entry.isDirectory) { const children = await readDirectoryEntries(entry); for (const child of children) await collectDroppedEntry(child, files); } }
+      async function collectDroppedHandle(handle, files) { if (!handle) return; if (handle.kind === 'file') { files.push(await handle.getFile()); return; } if (handle.kind === 'directory' && handle.values) { for await (const child of handle.values()) await collectDroppedHandle(child, files); } }
+      async function filesFromDrop(dataTransfer) { const plainFiles = [...(dataTransfer.files || [])]; if (plainFiles.length) return plainFiles; const items = [...(dataTransfer.items || [])].filter((item) => item.kind === 'file'); const files = []; for (const item of items) { let collected = false; try { const getEntry = item.getAsEntry || item.webkitGetAsEntry; const entry = getEntry ? getEntry.call(item) : null; if (entry) { await collectDroppedEntry(entry, files); collected = true; } } catch (error) {} if (!collected && item.getAsFileSystemHandle) { try { const handle = await item.getAsFileSystemHandle(); if (handle) { await collectDroppedHandle(handle, files); collected = true; } } catch (error) {} } if (!collected) { const file = item.getAsFile && item.getAsFile(); if (file) files.push(file); } } return files.length ? files : plainFiles; }
+      async function safeIngest(fileList) { try { await ingest(fileList); } catch (error) { console.error(error); setStatus('Could not read those files. Try Browse files or Browse folder.', 'error'); } }
+      async function handleDrop(event) { event.preventDefault(); event.stopPropagation(); try { const droppedFiles = await filesFromDrop(event.dataTransfer); if (!droppedFiles.length) { setStatus('No files were detected in the drop. Try Browse folder.', 'error'); return; } await safeIngest(droppedFiles); } catch (error) { console.error(error); setStatus('Could not read the drop. Use Browse folder instead.', 'error'); } }
+      async function pickFolder() { if (window.showDirectoryPicker) { try { setStatus('Reading folder…'); const directory = await window.showDirectoryPicker(); const files = []; await collectDroppedHandle(directory, files); await safeIngest(files); return; } catch (error) { if (error && error.name === 'AbortError') { setStatus('Folder selection cancelled.'); return; } console.error(error); } } els.folderInput.click(); }
+      async function ingest(fileList) { const incoming = [...fileList].filter((file) => file && (file.type.startsWith('image/') || /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|tiff?|webp)$/i.test(file.name))); if (!incoming.length) { setStatus('No image files found. Try a supported image file.', 'error'); return; } setStatus('Inspecting ' + incoming.length + (incoming.length === 1 ? ' file…' : ' files…')); for (const raw of incoming) { const id = uniqueId(raw) + '::' + state.files.length; if (state.files.some((file) => file.raw === raw)) continue; const dimensions = await readDimensions({ raw }); const ext = getExt(raw.name); const item = { id, raw, name: raw.name, baseName: raw.name.replace(/\.[^/.]+$/, ''), size: raw.size, lastModified: raw.lastModified, typeKey: raw.type || extLabels[ext] || 'Unknown', typeLabel: fileType(raw), width: dimensions.width, height: dimensions.height, previewUrl: dimensions.previewUrl, selected: true }; state.files.push(item); } addTypeOptions(); render(); await refreshTargets(); setStatus(state.files.length + (state.files.length === 1 ? ' file ready.' : ' files ready.'), 'success'); }
+      function targetDimensions(file) { if (!file.width || !file.height) return { width: null, height: null }; if (state.targetSize === 'original') return { width: file.width, height: file.height }; const parts = state.targetSize.split('x').map(Number); const maxWidth = parts[0] || file.width; const maxHeight = parts[1] || file.height; const scale = Math.min(1, maxWidth / file.width, maxHeight / file.height); return { width: Math.max(1, Math.round(file.width * scale)), height: Math.max(1, Math.round(file.height * scale)) }; }
+      async function convert(file) { let decoded; try { decoded = await decodeImage(file.raw); } catch (error) { return { error: isHeic(file.raw) ? 'HEIC decoder unavailable' : 'Cannot decode', width: null, height: null }; } const sourceFile = Object.assign({}, file, { width: decoded.width, height: decoded.height }); const dims = targetDimensions(sourceFile); if (!supportedOutput.has(state.format)) { decoded.cleanup(); return { error: 'Unsupported format', width: dims.width, height: dims.height }; } const canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height; const ctx = canvas.getContext('2d'); if (state.format === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dims.width, dims.height); } ctx.drawImage(decoded.source, 0, 0, dims.width, dims.height); decoded.cleanup(); const blob = await new Promise((resolve) => canvas.toBlob(resolve, state.format, state.quality)); if (!blob) return { error: 'Format unavailable', width: dims.width, height: dims.height }; return { bytes: blob.size, blob, url: URL.createObjectURL(blob), width: dims.width, height: dims.height, ext: formatLabels[state.format].toLowerCase(), ready: true }; }
+      async function refreshTargets() { state.targets.forEach((target) => { if (target && target.url) URL.revokeObjectURL(target.url); }); state.targets.clear(); const files = selectedFiles(); files.forEach((file) => state.targets.set(file.id, { ext: formatLabels[state.format].toLowerCase() })); render(); if (!files.length) return; let finished = 0; for (const file of files) { const result = await convert(file); state.targets.set(file.id, result); finished += 1; render(); setStatus('Calculating targets… ' + finished + '/' + files.length); } setStatus('Targets ready · review projected size, then download.', 'success'); render(); }
+      function readyTargets() { return selectedFiles().map((file) => ({ file, target: state.targets.get(file.id) })).filter((item) => item.target && item.target.ready); }
+      function downloadTargets() { const ready = readyTargets(); if (!ready.length) return; ready.forEach(({ file, target }) => { const link = document.createElement('a'); link.href = target.url; link.download = file.baseName + '.' + target.ext; document.body.appendChild(link); link.click(); link.remove(); }); setStatus(ready.length + (ready.length === 1 ? ' target downloaded.' : ' targets downloaded.'), 'success'); }
+      async function saveTargetsToFolder() { const ready = readyTargets(); if (!ready.length) return; if (!window.showDirectoryPicker) { setStatus('Folder selection is not supported here; downloading individually instead.'); downloadTargets(); return; } try { const directory = await window.showDirectoryPicker({ mode: 'readwrite' }); for (const item of ready) { const handle = await directory.getFileHandle(item.file.baseName + '.' + item.target.ext, { create: true }); const writable = await handle.createWritable(); await writable.write(item.target.blob); await writable.close(); } setStatus(ready.length + (ready.length === 1 ? ' target saved to the selected folder.' : ' targets saved to the selected folder.'), 'success'); } catch (error) { if (error && error.name === 'AbortError') setStatus('Folder selection cancelled.'); else setStatus('Could not save to that folder.', 'error'); } }
+      function clearAll() { state.files.forEach((file) => { if (file.previewUrl) URL.revokeObjectURL(file.previewUrl); }); state.targets.forEach((target) => { if (target && target.url) URL.revokeObjectURL(target.url); }); state.files = []; state.targets.clear(); els.fileInput.value = ''; addTypeOptions(); render(); setStatus('Workspace cleared.'); }
+
+      els.browseBtn.addEventListener('click', (event) => event.stopPropagation());
+      els.browseFolderBtn.addEventListener('click', (event) => { event.stopPropagation(); pickFolder(); });
+      els.dropzone.addEventListener('click', (event) => { if (!event.target.closest('button, label')) els.fileInput.click(); });
+      els.dropzone.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); els.fileInput.click(); } });
+      els.fileInput.addEventListener('change', (event) => safeIngest(event.target.files));
+      els.dropFileInput.addEventListener('change', (event) => safeIngest(event.target.files));
+      els.folderInput.addEventListener('change', (event) => safeIngest(event.target.files));
+      window.addEventListener('dragover', (event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'; }, true);
+      ['dragenter', 'dragover'].forEach((eventName) => els.dropzone.addEventListener(eventName, (event) => { event.preventDefault(); event.stopPropagation(); if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'; els.dropzone.classList.add('dragover'); }));
+      els.dropzone.addEventListener('dragleave', (event) => { event.preventDefault(); els.dropzone.classList.remove('dragover'); });
+      document.addEventListener('drop', (event) => { const zone = event.target && event.target.closest ? event.target.closest('#dropzone') : null; if (zone) handleDrop(event); else event.preventDefault(); }, true);
+      els.clearBtn.addEventListener('click', clearAll);
+      els.downloadBtn.addEventListener('click', downloadTargets);
+      els.downloadMenuBtn.addEventListener('click', () => { els.downloadMenu.hidden = !els.downloadMenu.hidden; els.downloadMenuBtn.setAttribute('aria-expanded', String(!els.downloadMenu.hidden)); });
+      els.chooseFolderBtn.addEventListener('click', () => { els.downloadMenu.hidden = true; els.downloadMenuBtn.setAttribute('aria-expanded', 'false'); saveTargetsToFolder(); });
+      els.individualDownloadBtn.addEventListener('click', () => { els.downloadMenu.hidden = true; els.downloadMenuBtn.setAttribute('aria-expanded', 'false'); downloadTargets(); });
+      document.addEventListener('click', (event) => { if (!event.target.closest('.download-wrap')) { els.downloadMenu.hidden = true; els.downloadMenuBtn.setAttribute('aria-expanded', 'false'); } });
+      els.typeFilter.addEventListener('change', () => { state.filterType = els.typeFilter.value; render(); });
+      els.sizeFilter.addEventListener('change', () => { state.filterSize = els.sizeFilter.value; render(); });
+      els.sortSelect.addEventListener('change', () => { state.sort = els.sortSelect.value; render(); });
+      els.selectVisibleBtn.addEventListener('click', () => { const ids = new Set(visibleFiles().map((file) => file.id)); state.files.forEach((file) => { if (ids.has(file.id)) file.selected = true; }); render(); refreshTargets(); });
+      els.formatSelect.addEventListener('change', () => { state.format = els.formatSelect.value; els.resolutionHelp.textContent = state.format === 'image/png' ? 'PNG ignores quality; output is fitted inside the selected standard size while preserving each original aspect ratio.' : 'Output is fitted inside the selected standard size while preserving each original aspect ratio.'; refreshTargets(); });
+      els.targetSizeSelect.addEventListener('change', () => { state.targetSize = els.targetSizeSelect.value; refreshTargets(); });
+      els.qualityRange.addEventListener('input', () => { state.quality = Number(els.qualityRange.value) / 100; els.qualityLabel.textContent = els.qualityRange.value + '%'; els.qualityValue.textContent = state.quality.toFixed(2); });
+      els.qualityRange.addEventListener('change', refreshTargets);
+      function setTheme(theme) { const dark = theme === 'dark'; document.documentElement.dataset.theme = dark ? 'dark' : 'light'; els.themeToggle.textContent = dark ? 'Light mode' : 'Dark mode'; els.themeToggle.setAttribute('aria-pressed', String(dark)); try { localStorage.setItem('image-forge-theme', dark ? 'dark' : 'light'); } catch (error) {} }
+      let savedTheme = 'light';
+      try { savedTheme = localStorage.getItem('image-forge-theme') || 'light'; } catch (error) {}
+      setTheme(savedTheme);
+      els.themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+      render();
+
+      if (window.GleanBridge && window.GleanBridge.postMessage) {
+        window.GleanBridge.postMessage({ actionId: 'export-pdf', type: 'glean-add-menu', metadata: { label: 'Export as PDF', icon: 'export' } });
+        window.GleanBridge.onMessage('action', function (data) { if (data.actionId === 'export-pdf') window.print(); });
+      }
+    }());
+  </script>
+</body>
+</html>
